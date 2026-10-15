@@ -98,27 +98,31 @@ export function prepareArticle(doc: ParsedDoc, opts: ArticleOptions = {}): { roo
   taskListGlyphs(tree);
 
   const notes = extractFootnotes(tree);
+  // Footnote bodies live outside the tree now; wrap them (sharing the arrays) so links inside get the same treatment
+  const noteRoots: Root[] = notes.map((n) => ({ type: 'root', children: n.content as Root['children'] }));
   const linkMode = opts.links ?? 'refs';
   let links: ReturnType<typeof linksToFootnotes> = [];
   if (linkMode === 'refs') {
-    links = linksToFootnotes(tree, opts.keepLink ?? (() => false));
+    links = linksToFootnotes([tree, ...noteRoots], opts.keepLink ?? (() => false));
   } else if (linkMode === 'text') {
-    visit(tree, 'element', (el: Element) => {
-      if (el.tagName === 'a') {
-        el.tagName = 'span';
-        el.properties = { className: ['link'] };
-      }
-    });
+    for (const t of [tree, ...noteRoots])
+      visit(t, 'element', (el: Element) => {
+        if (el.tagName === 'a') {
+          el.tagName = 'span';
+          el.properties = { className: ['link'] };
+        }
+      });
   }
   // Footnotes and link references share one numbered list
   if (notes.length && links.length) {
     const offset = notes.length;
-    visit(tree, 'element', (el: Element) => {
-      if (el.tagName === 'sup' && hasClass(el, 'link-ref')) {
-        const n = Number(String((el.children[0] as Text).value).replace(/\D/g, '')) + offset;
-        el.children = [{ type: 'text', value: `[${n}]` }];
-      }
-    });
+    for (const t of [tree, ...noteRoots])
+      visit(t, 'element', (el: Element) => {
+        if (el.tagName === 'sup' && hasClass(el, 'link-ref')) {
+          const n = Number(String((el.children[0] as Text).value).replace(/\D/g, '')) + offset;
+          el.children = [{ type: 'text', value: `[${n}]` }];
+        }
+      });
     links.forEach((l) => (l.n += offset));
   }
   const refItems = [

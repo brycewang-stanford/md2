@@ -66,6 +66,15 @@ export function renderWechat(input: string | ParsedDoc, opts: WechatOptions = {}
   visit(tree, 'element', (el: Element) => {
     // WeChat drops <div> wrappers (callouts lose their box); <section> survives
     if (el.tagName === 'div') el.tagName = 'section';
+    // Saving / publishing fails (请勿插入非mp.weixin.qq.com域名的链接) on any other <a href>:
+    // mailto:, #anchors, relative paths, raw HTML, or every link when references are off
+    if (el.tagName === 'a' && !WECHAT_LINK.test(String(el.properties.href ?? ''))) {
+      el.tagName = 'span';
+      delete el.properties.href;
+      delete el.properties.target;
+      delete el.properties.rel;
+      delete el.properties.title;
+    }
     // WeChat wraps a tight <li>'s inline content in a <section> itself, but leaves a
     // leading <span> outside it (task-list ☑ ended up on its own line); wrap it all first
     if (el.tagName === 'li' && el.children.length && !el.children.some((c) => c.type === 'element' && BLOCK.has(c.tagName)))

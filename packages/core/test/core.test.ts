@@ -95,6 +95,14 @@ describe('wechat', () => {
   test('mp.weixin links are kept', () => {
     expect(renderWechat('[x](https://mp.weixin.qq.com/s/abc)').html).toContain('href="https://mp.weixin.qq.com/s/abc"');
   });
+  test('only mp.weixin links stay links (WeChat refuses to publish any other <a href>)', () => {
+    const md = '[a](https://x.com/a) <me@x.com> [m](mailto:m@x.com) [h](#top) [r](./r.md) [w](https://mp.weixin.qq.com/s/w) <a href="https://x.com/raw">raw</a>\n\nNote[^1]\n\n[^1]: See [inner](https://x.com/inner).';
+    for (const linkReferences of [true, false]) {
+      const { html } = renderWechat(md, { linkReferences });
+      expect([...html.matchAll(/<a [^>]*href="([^"]*)"/g)].map((m) => m[1])).toEqual(['https://mp.weixin.qq.com/s/w']);
+    }
+    expect(renderWechat(md).html).toContain('https://x.com/inner');
+  });
   test('survives the WeChat editor: no div, task items in one block, no text gradients', () => {
     expect(html).not.toContain('<div');
     expect(html).toMatch(/<li[^>]*><section><span[^>]*>☑ <\/span> 公众号一键复制<\/section><\/li>/);

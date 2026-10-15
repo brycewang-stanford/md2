@@ -190,10 +190,10 @@ export interface LinkRef {
  * External links → text + `[n]` and a reference list at the end.
  * WeChat only allows links to mp.weixin.qq.com inside articles.
  */
-export function linksToFootnotes(tree: Root, keep: (url: string) => boolean): LinkRef[] {
+export function linksToFootnotes(trees: Root | Root[], keep: (url: string) => boolean): LinkRef[] {
   const refs: LinkRef[] = [];
   const seen = new Map<string, number>();
-  visit(tree, 'element', (el: Element, index, parent: Parent | undefined) => {
+  for (const tree of Array.isArray(trees) ? trees : [trees]) visit(tree, 'element', (el: Element, index, parent: Parent | undefined) => {
     if (!parent || index === undefined || el.tagName !== 'a') return;
     const url = String(el.properties.href ?? '');
     if (!/^https?:\/\//i.test(url) || keep(url)) return;
