@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.5 — 2026-10-15
+
+### Fixed
+- **More 知乎 images survive the paste.** SVG images (shields.io / JOSS badges) are converted to PNG, since Zhihu only re-hosts raster images. `raw.githubusercontent.com` images, which Zhihu's servers in mainland China can't reach, go through jsDelivr. Every candidate is checked before copy and falls back to the wsrv.nl image proxy when jsDelivr times out on a cold cache, and md2 warns about any remote image with no reachable alternative.
+
 ## 0.2.4 — 2026-10-15
 
 ### Changed
