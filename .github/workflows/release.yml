@@ -1,0 +1,78 @@
+name: Release
+
+# Builds, tests and packages the VS Code extension, publishes it to the
+# VS Code Marketplace and Open VSX, and attaches the .vsix to the GitHub release.
+#
+# Release flow:
+#   - bump the version in every package.json (+ VERSION in packages/cli/src/cli.ts)
+#   - add a CHANGELOG entry
+#   - git tag v0.2.5 && git push origin v0.2.5
+#
+# One-time setup (each publish step is skipped while its secret is missing):
+#   - VSCE_PAT: Azure DevOps PAT, Organization = All accessible organizations,
+#     Scope = Marketplace → Manage, for the brycewang-stanford publisher
+#       gh secret set VSCE_PAT -R brycewang-stanford/md2
+#   - OVSX_PAT: token from https://open-vsx.org/user-settings/tokens
+#       gh secret set OVSX_PAT -R brycewang-stanford/md2
+
+on:
+  push:
+    tags: ['v*']
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Verify tag matches package versions
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          for f in apps/vscode/package.json packages/cli/package.json packages/core/package.json apps/web/package.json; do
+            V=$(node -p "require('./$f').version")
+            [ "$V" = "$TAG" ] || { echo "::error::$f is $V, tag is $TAG"; exit 1; }
+          done
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm typecheck
+      - run: pnpm test
+
+      - name: Package extension
+        run: cd apps/vscode && npx vsce package --no-dependencies -o "../../md2-${GITHUB_REF_NAME#v}.vsix"
+
+      - name: Publish to VS Code Marketplace
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          if [ -z "$VSCE_PAT" ]; then echo "::notice::VSCE_PAT not set; skipping Marketplace publish."; exit 0; fi
+          npx -y @vscode/vsce publish --packagePath "md2-${GITHUB_REF_NAME#v}.vsix" --pat "$VSCE_PAT"
+
+      - name: Publish to Open VSX
+        continue-on-error: true
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: |
+          if [ -z "$OVSX_PAT" ]; then echo "::notice::OVSX_PAT not set; skipping Open VSX publish."; exit 0; fi
+          npx -y ovsx publish "md2-${GITHUB_REF_NAME#v}.vsix" --pat "$OVSX_PAT"
+
+      - name: Attach .vsix to GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VSIX="md2-${GITHUB_REF_NAME#v}.vsix"
+          if ! gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release create "$GITHUB_REF_NAME" --title "md2 $GITHUB_REF_NAME" --generate-notes
+          fi
+          gh release upload "$GITHUB_REF_NAME" "$VSIX" --clobber

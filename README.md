@@ -71,7 +71,7 @@ The themes follow current design languages: **Claude, Linear, Geist (Vercel), Ap
 
 ### VS Code extension
 
-Install [md2 from the VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=brycewang-stanford.md2) (search **md2** in the Extensions view, or run `code --install-extension brycewang-stanford.md2`). A `.vsix` is also attached to each [release](https://github.com/brycewang-stanford/md2/releases). Open any Markdown file, then click the md2 icon in the editor title bar or press <kbd>⌘</kbd><kbd>⌥</kbd><kbd>M</kbd> (Windows / Linux: <kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>M</kbd>):
+Install [md2 from the VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=brycewang-stanford.md2) (search **md2** in the Extensions view, or run `code --install-extension brycewang-stanford.md2`). Cursor, VSCodium and Windsurf users can install it from [Open VSX](https://open-vsx.org/extension/brycewang-stanford/md2). A `.vsix` is also attached to each [release](https://github.com/brycewang-stanford/md2/releases). Open any Markdown file, then click the md2 icon in the editor title bar or press <kbd>⌘</kbd><kbd>⌥</kbd><kbd>M</kbd> (Windows / Linux: <kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>M</kbd>):
 
 - Live preview for every platform, scrolling with your editor.
 - From the Command Palette or the right-click menu: copy for WeChat / Zhihu, export Xiaohongshu cards, long images or covers (saved to `md2-export/`), copy a thread.
