@@ -4,7 +4,7 @@ import {
   parseMarkdown, renderWechat, renderZhihu, renderX, renderXhs, renderXhsText, renderCover,
   tweetLength, inlineCss, specificity, themes, codeThemes, coverTemplates, coverSizes,
   preloadMath, renderLongImage, toUnicodeBold, socialPlatforms, aiXhsCopy, aiThread, articleText, AiError,
-  texToSvg,
+  texToSvg, isPublicImage,
 } from '../src/index.js';
 import { fromHtml } from 'hast-util-from-html';
 import { toHtml } from 'hast-util-to-html';
@@ -98,6 +98,14 @@ describe('wechat', () => {
 });
 
 describe('zhihu', () => {
+  test('only public images survive Zhihu re-hosting', () => {
+    expect(isPublicImage('https://example.com/a.png')).toBe(true);
+    expect(isPublicImage('data:image/png;base64,AA')).toBe(true);
+    expect(isPublicImage('docs/a.png')).toBe(false);
+    expect(isPublicImage('https://file+.vscode-resource.vscode-cdn.net/Users/a.png')).toBe(false);
+    expect(isPublicImage('http://localhost:5173/a.png')).toBe(false);
+    expect(isPublicImage('blob:https://x/1')).toBe(false);
+  });
   const { html } = renderZhihu(demo);
   test('equations use zhihu images; display ends with \\\\', () => {
     expect(html).toContain('eeimg="1"');

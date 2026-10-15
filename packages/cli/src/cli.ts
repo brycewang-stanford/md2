@@ -14,7 +14,7 @@ import { copyHtml, copyText } from './clipboard.js';
 import { closeBrowser } from './browser.js';
 import { startMcpServer } from './mcp.js';
 
-const VERSION = '0.2.0';
+const VERSION = '0.2.1';
 
 const c = {
   green: (s: string) => `\x1b[32m${s}\x1b[0m`,
@@ -98,8 +98,10 @@ program
   .option('-c, --copy', 'copy rich text to clipboard, then paste into the Zhihu editor')
   .option('--keep-title', 'keep the first H1')
   .option('--links-as-refs', 'turn external links into Zhihu references')
+  .option('--image-base <url>', 'public URL prefix for local images (Zhihu fetches every image from its servers)')
+  .option('--no-git', 'do not map pushed images to jsDelivr; inline local images as base64')
   .action(async (file, o) => {
-    const r = await zhihuHtml({ file }, { removeTitle: !o.keepTitle, linksAsReferences: o.linksAsRefs });
+    const r = await zhihuHtml({ file }, { removeTitle: !o.keepTitle, linksAsReferences: o.linksAsRefs, imageBase: o.imageBase, noGit: o.git === false });
     warn(r.warnings);
     if (o.copy) {
       copyHtml(r.html, r.text);

@@ -4,6 +4,7 @@ import * as fs from 'node:fs';
 import { aiXhsCopy, aiThread, aiWechatMeta, aiCoverCopy, type AiConfig, type SocialPlatformId } from '@md2/core';
 import { copyHtml } from '../../../packages/cli/src/clipboard';
 import { publishWechatDraft } from '../../../packages/cli/src/publish';
+import { publicImages } from '../../../packages/cli/src/public-images';
 import { PreviewPanel, type RequestHandler } from './panel';
 
 const SECRET_AI_KEY = 'md2.ai.apiKey';
@@ -96,6 +97,13 @@ const handle: RequestHandler = async (msg, panel) => {
     case 'copyText':
       await vscode.env.clipboard.writeText(String(msg.text));
       return true;
+    case 'publicImages': {
+      // Zhihu fetches pasted images from its servers: map local files to public URLs / data URLs
+      const doc = panel.document;
+      if (!doc || doc.uri.scheme !== 'file') return { map: {}, inlined: [] };
+      const imageBase = typeof msg.imageBase === 'string' ? msg.imageBase : undefined;
+      return publicImages(msg.srcs as string[], path.dirname(doc.uri.fsPath), { imageBase });
+    }
     case 'ai':
       return runAi(String(msg.task), String(msg.markdown), (msg.platform as SocialPlatformId) ?? 'x');
     case 'saveAiConfig': {

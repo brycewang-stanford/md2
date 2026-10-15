@@ -20,6 +20,8 @@ export interface Host {
   saveAiConfig?(cfg: AiConfig): Promise<void>;
   /** Whether a key is configured on the host side (VS Code) */
   aiConfigured?(): Promise<boolean>;
+  /** Map local image srcs to URLs Zhihu's servers can fetch (VS Code: jsDelivr for pushed files, else data URLs) */
+  publicImages?(srcs: string[], imageBase?: string): Promise<{ map: Record<string, string>; inlined: string[] }>;
 }
 
 interface VsCodeApi {
@@ -123,6 +125,7 @@ function vscodeHost(api: VsCodeApi): Host {
     ai: (task, markdown, platform) => request('ai', { task, markdown, platform }),
     saveAiConfig: (cfg) => request('saveAiConfig', { config: cfg }),
     aiConfigured: () => request<boolean>('aiConfigured'),
+    publicImages: (srcs, imageBase) => request('publicImages', { srcs, imageBase }),
   };
 }
 

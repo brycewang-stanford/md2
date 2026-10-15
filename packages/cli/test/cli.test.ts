@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { fileURLToPath } from 'node:url';
-import { publishWechat, wechatHtml, xThread } from '../src/actions.js';
+import { publishWechat, wechatHtml, xThread, zhihuHtml } from '../src/actions.js';
+import { publicImages } from '../src/public-images.js';
 import { inlineLocalImages, localPath, loadImage } from '../src/io.js';
 import { WechatApiError } from '../src/wechat-api.js';
 
@@ -19,6 +20,20 @@ describe('io', () => {
     const img = await loadImage('data:image/png;base64,iVBORw0KGgo=', dir);
     expect(img.mime).toBe('image/png');
     expect(img.data.length).toBe(8);
+  });
+});
+
+describe('zhihu images', () => {
+  test('image_base maps local images to public URLs', async () => {
+    const r = await publicImages(['./pic.png', 'https://x.com/a.png'], dir, { imageBase: 'https://cdn.example.com/post' });
+    expect(r.map).toEqual({ './pic.png': 'https://cdn.example.com/post/pic.png' });
+    expect(r.inlined).toEqual([]);
+  });
+  test('unpushed local images fall back to data URLs with a warning', async () => {
+    const r = await zhihuHtml({ file: post }, { noGit: true });
+    expect(r.html).toMatch(/<img src="data:image\/png;base64,/);
+    expect(r.warnings.map((w) => w.code)).toContain('inlined-image');
+    expect(r.warnings.map((w) => w.code)).not.toContain('local-image');
   });
 });
 

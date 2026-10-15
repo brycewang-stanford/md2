@@ -8,7 +8,7 @@ export { toPlainBlocks, type PlainBlock } from './plain.js';
 export * from './themes/index.js';
 export * from './cover/index.js';
 export { renderWechat, type WechatOptions, type WechatResult } from './platforms/wechat.js';
-export { renderZhihu, zhihuEquation, zhihuLang, type ZhihuOptions, type ZhihuResult } from './platforms/zhihu.js';
+export { renderZhihu, zhihuEquation, zhihuLang, isPublicImage, type ZhihuOptions, type ZhihuResult } from './platforms/zhihu.js';
 export {
   renderXhs, renderXhsText, xhsLength, xhsCardStyles, XHS_TITLE_MAX, XHS_BODY_MAX,
   type XhsOptions, type XhsResult, type XhsLayout, type XhsText, type XhsCardStyle,

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.1 — 2026-10-15
+
+### Fixed
+- **知乎 images no longer show 上传失败**. Zhihu re-hosts every pasted image by fetching its URL from Zhihu's servers, so local paths and VS Code preview URIs always failed. On copy (VS Code panel, `md2 zhihu --copy`), local images now become public URLs: jsDelivr links pinned to the pushed commit for files already on GitHub, an `image_base` front-matter / `--image-base` prefix for your own host, or inline base64 as a last resort. The Zhihu tab now warns about any image Zhihu can't fetch.
+
+### Docs
+- README split into English (`README.md`) and 简体中文 (`README.zh-CN.md`), for the repo and the VS Code extension.
+
 ## 0.2.0 — 2026-10-15
 
 ### New

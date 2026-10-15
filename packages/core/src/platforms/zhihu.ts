@@ -57,6 +57,16 @@ export function zhihuEquation(tex: string, display: boolean): Element {
   }) as Element;
 }
 
+/**
+ * Zhihu re-hosts pasted images by fetching each src from its own servers, so
+ * only URLs on the public internet (or inline data URLs) survive the paste.
+ */
+export function isPublicImage(src: string): boolean {
+  if (src.startsWith('data:')) return true;
+  if (!/^https?:\/\//i.test(src)) return false;
+  return !/^https?:\/\/(localhost|127\.|0\.0\.0\.0|\[::1\]|[^/]*\.localhost[:/]|[^/]*vscode-(resource|cdn|webview))/i.test(src);
+}
+
 function zhihuReference(n: number, text: string, url: string): Element {
   return h(
     'sup',
@@ -148,8 +158,8 @@ export function renderZhihu(input: string | ParsedDoc, opts: ZhihuOptions = {}):
   visit(tree, 'element', (el: Element) => {
     if (el.tagName === 'img') {
       const src = String(el.properties.src ?? '');
-      if (src && !/^https?:\/\//i.test(src) && !src.startsWith('data:'))
-        warnings.push({ code: 'local-image', message: `本地图片需要先上传或手动插入知乎: ${src}` });
+      if (src && !isPublicImage(src))
+        warnings.push({ code: 'local-image', message: `知乎服务器无法抓取此图片，粘贴后会显示「上传失败」: ${src}` });
     }
     if (el.tagName === 'img' && el.properties.eeimg) return;
     delete el.properties.className;

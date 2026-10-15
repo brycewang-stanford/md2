@@ -7,6 +7,8 @@
 <p align="center"><b>Write Markdown once and publish it to 公众号 (WeChat), 知乎 (Zhihu), 小红书 (Xiaohongshu) and X / Threads / Bluesky / LinkedIn, with long images and covers.</b><br>
 一篇 Markdown，发遍公众号、知乎、小红书、X / Threads，还能出长图和封面。</p>
 
+<p align="center"><b>English</b> · <a href="https://github.com/brycewang-stanford/md2/blob/main/apps/vscode/README.zh-CN.md">简体中文</a></p>
+
 <p align="center">
   <img src="https://raw.githubusercontent.com/brycewang-stanford/md2/main/docs/images/vscode-wechat.jpg" width="420" alt="WeChat preview">
   <img src="https://raw.githubusercontent.com/brycewang-stanford/md2/main/docs/images/vscode-xhs.jpg" width="420" alt="Xiaohongshu cards">

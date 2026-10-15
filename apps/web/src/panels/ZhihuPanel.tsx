@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { renderZhihu } from '@md2/core';
+import { renderZhihu, isPublicImage } from '@md2/core';
 import { Button, Toggle, Warnings, toast } from '../components/ui';
 import { host } from '../lib/host';
 import { resolveAsset } from '../lib/assets';
@@ -12,20 +12,32 @@ export function ZhihuPanel({ doc, scrollRatio }: PanelProps) {
   const [linksAsRefs, setLinksAsRefs] = usePersistent('zh.linksAsRefs', false);
   const [nativeRefs, setNativeRefs] = usePersistent('zh.nativeRefs', true);
   const scroller = useRef<HTMLDivElement>(null);
-  const result = useMemo(
-    () => renderZhihu(doc, { linksAsReferences: linksAsRefs, nativeReferences: nativeRefs, resolveImage: resolveAsset }),
-    [doc, linksAsRefs, nativeRefs],
-  );
+  const opts = { linksAsReferences: linksAsRefs, nativeReferences: nativeRefs };
+  const result = useMemo(() => renderZhihu(doc, { ...opts, resolveImage: resolveAsset }), [doc, linksAsRefs, nativeRefs]);
 
   useEffect(() => {
     const el = scroller.current;
     if (el) el.scrollTop = scrollRatio * (el.scrollHeight - el.clientHeight);
   }, [scrollRatio]);
 
+  // Zhihu re-fetches every pasted image from its own servers, so the preview's
+  // local/webview URLs are swapped for public ones (or data URLs) at copy time
   const copy = async () => {
     try {
-      await host.copyRich(result.html, result.text);
-      toast(t('已复制，打开知乎写文章页粘贴', 'Copied — paste into Zhihu’s editor'));
+      let out = result;
+      let inlined = 0;
+      const local = doc.images.filter((s) => !s.startsWith('asset:') && !isPublicImage(s));
+      if (host.publicImages && local.length) {
+        toast(t(`正在准备 ${local.length} 张图片…`, `Preparing ${local.length} images…`));
+        const pub = await host.publicImages(local, doc.frontmatter.image_base as string | undefined);
+        out = renderZhihu(doc, { ...opts, resolveImage: (s) => pub.map[s] ?? resolveAsset(s) });
+        inlined = pub.inlined.length;
+      }
+      await host.copyRich(out.html, out.text);
+      const broken = out.warnings.filter((w) => w.code === 'local-image').length;
+      if (broken) toast(t(`已复制，但 ${broken} 张图片知乎无法抓取（文件不存在？）`, `Copied, but Zhihu can’t fetch ${broken} images (missing files?)`), 'err');
+      else if (inlined) toast(t(`已复制；${inlined} 张图片未推送到 GitHub，已内嵌为 base64`, `Copied; ${inlined} unpushed images inlined as base64`));
+      else toast(t('已复制，打开知乎写文章页粘贴', 'Copied — paste into Zhihu’s editor'));
     } catch (e) {
       console.error('md2: export failed', e);
       toast(t('复制失败，请重试', 'Copy failed, try again'), 'err');
@@ -34,7 +46,8 @@ export function ZhihuPanel({ doc, scrollRatio }: PanelProps) {
   usePrimaryAction(copy);
 
   const warnings = [
-    ...result.warnings,
+    // VS Code resolves local images at copy time; only flag what it can't
+    ...result.warnings.filter((w) => !(host.publicImages && w.code === 'local-image' && /vscode-(resource|cdn|webview)/.test(w.message))),
     ...(doc.diagrams.length ? [{ message: t('知乎不支持内联 SVG：流程图会以代码块粘贴，可在「长图」或「小红书」标签导出图片后插入', 'Zhihu has no inline SVG: diagrams paste as code — export them as images from the Long image or XHS tab') }] : []),
   ];
 

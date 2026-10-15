@@ -9,6 +9,7 @@ import {
 } from '@md2/core';
 import { readInput, inlineLocalImages, isRemote, type Input } from './io.js';
 import { publishWechatDraft, type PublishCoreOptions } from './publish.js';
+import { publicImages, type PublicImageOptions } from './public-images.js';
 import { renderXhsPngs, renderCoverPng, renderDiagrams, renderHtmlPng } from './browser.js';
 
 export interface Source {
@@ -40,9 +41,18 @@ export async function wechatHtml(src: Source, opts: WechatOptions = {}) {
   return renderWechat(doc, { ...opts, diagram });
 }
 
-export async function zhihuHtml(src: Source, opts: ZhihuOptions = {}) {
-  const { doc } = await load(src);
-  return renderZhihu(doc, opts);
+/** Zhihu fetches pasted images from its servers, so local images are mapped to public URLs first. */
+export async function zhihuHtml(src: Source, opts: ZhihuOptions & PublicImageOptions = {}) {
+  const { doc, baseDir } = await load(src);
+  const imageBase = opts.imageBase ?? (doc.frontmatter.image_base as string | undefined);
+  const { map, inlined } = await publicImages(doc.images, baseDir, { imageBase, noGit: opts.noGit });
+  const r = renderZhihu(doc, { ...opts, resolveImage: opts.resolveImage ?? ((s) => map[s]) });
+  if (inlined.length)
+    r.warnings.push({
+      code: 'inlined-image',
+      message: `${inlined.length} 张本地图片未推送到 GitHub，已内嵌为 base64；若知乎显示上传失败，请先 git push 或设置 image_base: ${inlined.join(', ')}`,
+    });
+  return r;
 }
 
 export async function xThread(src: Source, opts: XOptions = {}) {
