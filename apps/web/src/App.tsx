@@ -190,8 +190,12 @@ export function App() {
               <span className="logo">
                 <svg viewBox="0 0 256 256" width="26" height="26" aria-hidden="true">
                   <rect width="256" height="256" rx="58" fill="#1c1b18" />
-                  <path d="M50 184V84l42 54 42-54v100" fill="none" stroke="#faf9f5" strokeWidth="22" strokeLinecap="round" strokeLinejoin="round" />
-                  <path d="M164 92c0-14 12-24 26-24s26 10 26 24c0 22-52 44-52 64v12h54" fill="none" stroke="#d97757" strokeWidth="20" strokeLinecap="round" strokeLinejoin="round" />
+                  <g transform="translate(128 137) scale(0.74) translate(-110 -15)" fill="none" strokeWidth="20" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M0 60V15a15 15 0 0 1 30 0v45M30 15a15 15 0 0 1 30 0v45" stroke="#faf9f5" />
+                    <circle cx="118" cy="30" r="30" stroke="#faf9f5" />
+                    <path d="M148 -30v90" stroke="#faf9f5" />
+                    <path d="M177 -9a21 21 0 0 1 42 0c0 26-42 40-42 69h44" stroke="#d97757" />
+                  </g>
                 </svg>
               </span>
               <span className="brand-name">md2</span>

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.2 — 2026-10-15
+
+### Changed
+- The logo now spells **md2** (with the “d”) in the README, the VS Code extension icon, the web app header and the favicon.
+
 ## 0.2.1 — 2026-10-15
 
 ### Fixed
