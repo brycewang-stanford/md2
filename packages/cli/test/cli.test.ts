@@ -1,0 +1,82 @@
+import { afterEach, describe, expect, test, vi } from 'vitest';
+import { fileURLToPath } from 'node:url';
+import { publishWechat, wechatHtml, xThread } from '../src/actions.js';
+import { inlineLocalImages, localPath, loadImage } from '../src/io.js';
+import { WechatApiError } from '../src/wechat-api.js';
+
+const post = fileURLToPath(new URL('./fixtures/post.md', import.meta.url));
+const dir = fileURLToPath(new URL('./fixtures/', import.meta.url));
+
+afterEach(() => vi.unstubAllGlobals());
+
+describe('io', () => {
+  test('resolves local images relative to the markdown file', () => {
+    expect(localPath('./pic.png', dir)).toMatch(/fixtures\/pic\.png$/);
+    expect(localPath('https://x.com/a.png', dir)).toBeUndefined();
+    expect(inlineLocalImages(dir)('./pic.png')).toMatch(/^data:image\/png;base64,/);
+  });
+  test('loads data URLs', async () => {
+    const img = await loadImage('data:image/png;base64,iVBORw0KGgo=', dir);
+    expect(img.mime).toBe('image/png');
+    expect(img.data.length).toBe(8);
+  });
+});
+
+describe('actions', () => {
+  test('wechat html from file', () => {
+    const r = wechatHtml({ file: post }, { theme: 'linear' });
+    expect(r.html).toContain('#5e6ad2');
+    expect(r.warnings[0].code).toBe('local-image');
+  });
+  test('x thread from markdown string', () => {
+    expect(xThread({ markdown: '# T\n\nhello world' }).tweets.length).toBeGreaterThan(0);
+  });
+});
+
+describe('publish wechat (mocked API)', () => {
+  test('token → upload image → upload cover → draft', async () => {
+    const calls: string[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      const u = new URL(url);
+      calls.push(u.pathname);
+      const json = (o: object) => new Response(JSON.stringify(o), { headers: { 'content-type': 'application/json' } });
+      if (u.pathname.endsWith('/stable_token')) {
+        expect(JSON.parse(String(init?.body))).toMatchObject({ appid: 'id', secret: 'sec' });
+        return json({ access_token: 'TOKEN', expires_in: 7200 });
+      }
+      expect(u.searchParams.get('access_token')).toBe('TOKEN');
+      if (u.pathname.endsWith('/media/uploadimg')) return json({ url: 'http://mmbiz.qpic.cn/uploaded.png' });
+      if (u.pathname.endsWith('/material/add_material')) return json({ media_id: 'THUMB', url: 'x' });
+      if (u.pathname.endsWith('/draft/add')) {
+        const body = JSON.parse(String(init?.body));
+        const a = body.articles[0];
+        expect(a.title).toBe('测试文章');
+        expect(a.author).toBe('tester');
+        expect(a.thumb_media_id).toBe('THUMB');
+        expect(a.content).toContain('http://mmbiz.qpic.cn/uploaded.png');
+        expect(a.content).not.toContain('<h1');
+        expect(a.digest).toContain('第一段内容');
+        return json({ media_id: 'DRAFT1' });
+      }
+      throw new Error('unexpected ' + url);
+    }));
+    const r = await publishWechat({ file: post }, { appId: 'id', appSecret: 'sec' });
+    expect(r.mediaId).toBe('DRAFT1');
+    expect(calls.map((c) => c.split('/').pop())).toEqual(['stable_token', 'uploadimg', 'add_material', 'add']);
+  });
+
+  test('API errors carry actionable hints', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ errcode: 40164, errmsg: 'invalid ip' }))));
+    const err = await publishWechat({ file: post }, { appId: 'id', appSecret: 'sec' }).catch((e) => e);
+    expect(err).toBeInstanceOf(WechatApiError);
+    expect(err.message).toContain('IP 白名单');
+  });
+
+  test('missing credentials', async () => {
+    const env = { ...process.env };
+    delete process.env.MD2_WECHAT_APPID;
+    delete process.env.WECHAT_APPID;
+    await expect(publishWechat({ file: post })).rejects.toThrow(/MD2_WECHAT_APPID/);
+    process.env = env;
+  });
+});

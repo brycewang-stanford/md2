@@ -1,0 +1,77 @@
+{
+  "name": "md2all",
+  "version": "0.1.0",
+  "description": "Markdown \u2192 \u516c\u4f17\u53f7 / \u77e5\u4e4e / \u5c0f\u7ea2\u4e66 / X. CLI + MCP server for md2.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "md2": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "markdown",
+    "wechat",
+    "\u516c\u4f17\u53f7",
+    "zhihu",
+    "\u77e5\u4e4e",
+    "xiaohongshu",
+    "\u5c0f\u7ea2\u4e66",
+    "twitter",
+    "x",
+    "mcp",
+    "cover"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.4",
+    "@md2/core": "workspace:*"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "commander": "^15.0.0",
+    "hast-util-from-html": "^2.0.3",
+    "hast-util-select": "^6.0.4",
+    "hast-util-to-html": "^9.0.5",
+    "hast-util-to-text": "^4.0.2",
+    "hastscript": "^9.0.1",
+    "lowlight": "^3.3.0",
+    "mathjax-full": "^3.2.2",
+    "playwright-core": "^1.64.1",
+    "postcss": "^8.5.30",
+    "rehype-raw": "^7.0.0",
+    "remark-frontmatter": "^5.0.0",
+    "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
+    "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.1.2",
+    "unified": "^11.0.5",
+    "unist-util-visit": "^5.1.0",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.7"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/brycewang-stanford/md2",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/brycewang-stanford/md2",
+  "author": "Bryce Wang"
+}

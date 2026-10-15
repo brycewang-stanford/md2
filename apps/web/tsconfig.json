@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "declaration": false,
+    "types": ["vite/client"],
+    "paths": { "@md2/core": ["../../packages/core/src/index.ts"], "@md2/core/dom": ["../../packages/core/src/dom.ts"] }
+  },
+  "include": ["src", "vite.config.ts"]
+}

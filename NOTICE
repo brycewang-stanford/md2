@@ -1,0 +1,17 @@
+md2 — Markdown → WeChat / Zhihu / Xiaohongshu / X
+Copyright (c) 2026 Bryce Wang and md2 contributors. Licensed under MIT.
+
+Acknowledgements
+----------------
+- The list of code-block languages Zhihu recognises (packages/core/src/platforms/zhihu.ts)
+  is adapted from marsggbo/markdown2anything (MIT License,
+  https://github.com/marsggbo/markdown2anything).
+- Ideas from doocs/md (WTFPL) and the wider Markdown-to-WeChat community informed the
+  WeChat rendering approach (inline styles, SVG formulas, link footnotes). No code copied.
+- Code colour palettes follow the public palettes of GitHub Primer, Vitesse (Anthony Fu),
+  Tokyo Night (enkia), Catppuccin and Rosé Pine (all MIT).
+
+Bundled / runtime dependencies keep their own licenses: unified/remark/rehype (MIT),
+MathJax (Apache-2.0), highlight.js via lowlight (BSD-3-Clause), PostCSS (MIT),
+CodeMirror (MIT), React (MIT), html-to-image (MIT), JSZip (MIT/GPLv3 dual — used under MIT),
+Playwright (Apache-2.0), Model Context Protocol SDK (MIT).

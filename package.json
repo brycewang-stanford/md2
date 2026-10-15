@@ -1,0 +1,22 @@
+{
+  "name": "md2-monorepo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "pnpm --filter @md2/core build && pnpm --filter md2all build && pnpm --filter @md2/web build",
+    "dev": "pnpm --filter @md2/web dev",
+    "test": "pnpm --filter @md2/core build && pnpm --filter @md2/core --filter md2all test",
+    "typecheck": "pnpm -r typecheck",
+    "md2": "node packages/cli/dist/cli.js"
+  },
+  "packageManager": "pnpm@10.33.2",
+  "engines": {
+    "node": ">=20"
+  },
+  "description": "Markdown \u2192 \u516c\u4f17\u53f7 / \u77e5\u4e4e / \u5c0f\u7ea2\u4e66 / X, with covers. Web app + CLI + MCP server.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/brycewang-stanford/md2"
+  }
+}

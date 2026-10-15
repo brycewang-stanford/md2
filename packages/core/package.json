@@ -1,0 +1,64 @@
+{
+  "name": "@md2/core",
+  "version": "0.1.0",
+  "description": "Isomorphic Markdown renderer for WeChat (\u516c\u4f17\u53f7), Zhihu (\u77e5\u4e4e), Xiaohongshu (\u5c0f\u7ea2\u4e66) and X/Twitter",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./dom": {
+      "types": "./dist/dom.d.ts",
+      "import": "./dist/dom.js"
+    },
+    "./md2-dom.iife.js": "./dist/md2-dom.iife.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "hast-util-from-html": "^2.0.3",
+    "hast-util-select": "^6.0.4",
+    "hast-util-to-html": "^9.0.5",
+    "hast-util-to-text": "^4.0.2",
+    "hastscript": "^9.0.1",
+    "lowlight": "^3.3.0",
+    "mathjax-full": "^3.2.2",
+    "postcss": "^8.5.30",
+    "rehype-raw": "^7.0.0",
+    "remark-frontmatter": "^5.0.0",
+    "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
+    "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.1.2",
+    "unified": "^11.0.5",
+    "unist-util-visit": "^5.1.0",
+    "yaml": "^2.9.1"
+  },
+  "devDependencies": {
+    "@types/hast": "^3.0.5",
+    "@types/mdast": "^4.0.4",
+    "@types/node": "^26.6.5",
+    "@types/unist": "^3.0.3",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/brycewang-stanford/md2",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/brycewang-stanford/md2",
+  "author": "Bryce Wang"
+}
