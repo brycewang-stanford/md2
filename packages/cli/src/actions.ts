@@ -64,7 +64,7 @@ export async function zhihuHtml(src: Source, opts: ZhihuOptions & PublicImageOpt
   if (inlined.length)
     r.warnings.push({
       code: 'inlined-image',
-      message: `${inlined.length} 张本地图片未推送到 GitHub，已内嵌为 base64；若知乎显示上传失败，请先 git push 或设置 image_base: ${inlined.join(', ')}`,
+      message: `${inlined.length} 张本地图片未推送到 GitHub，只能内嵌为 base64，知乎不接受（会显示上传失败）；请先 git push 或设置 image_base: ${inlined.join(', ')}`,
     });
   if (unreachable.length)
     r.warnings.push({ code: 'unreachable-image', message: `知乎可能无法抓取这些远程图片（备用地址均不可用）: ${unreachable.join(', ')}` });

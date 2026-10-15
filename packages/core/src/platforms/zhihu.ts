@@ -89,10 +89,13 @@ function githubFile(u: URL): { owner: string; repo: string; ref: string; path: s
 /**
  * Remote images Zhihu's servers are likely to fail on, mapped to alternatives in
  * order of preference (empty = keep the URL as is):
- * - SVG: Zhihu only re-hosts raster images → shields.io's PNG endpoint for badges,
- *   otherwise the wsrv.nl image proxy converting to PNG
+ * - SVG (and shields.io badges, SVG even without the extension): Zhihu only
+ *   re-hosts raster images → the wsrv.nl image proxy converting to PNG
+ *   (raster.shields.io PNGs are rejected by Zhihu's fetcher, tested 2026-10-15)
  * - GitHub raw / blob URLs: raw.githubusercontent.com is unreachable from mainland
- *   China → jsDelivr, then wsrv.nl (jsDelivr can time out on a cold, large repo)
+ *   China → the wsrv.nl proxy, then jsDelivr. In paste tests (2026-10-15) Zhihu
+ *   re-hosted every wsrv.nl image, while a cold jsDelivr edge failed 1 of 19;
+ *   pasted data: images are NOT an option (Zhihu maps them all to one cached image)
  */
 export function zhihuImageCandidates(src: string): string[] {
   if (!/^https?:\/\//i.test(src) || !isPublicImage(src)) return [];
@@ -102,13 +105,12 @@ export function zhihuImageCandidates(src: string): string[] {
   } catch {
     return [];
   }
-  const svg = /\.svg$/i.test(u.pathname);
-  if (u.hostname === 'img.shields.io') return [`https://raster.shields.io${u.pathname.replace(/\.svg$/i, '')}.png${u.search}`];
+  const svg = /\.svg$/i.test(u.pathname) || u.hostname === 'img.shields.io';
   const gh = githubFile(u);
   if (gh) {
     const raw = `https://raw.githubusercontent.com/${gh.owner}/${gh.repo}/${gh.ref}/${gh.path}`;
     const cdn = `https://cdn.jsdelivr.net/gh/${gh.owner}/${gh.repo}@${gh.ref}/${gh.path}`;
-    return svg ? [proxyPng(cdn, true), proxyPng(raw, true)] : [cdn, proxyPng(raw, false)];
+    return svg ? [proxyPng(raw, true), proxyPng(cdn, true)] : [proxyPng(raw, false), cdn];
   }
   return svg ? [proxyPng(src, true)] : [];
 }

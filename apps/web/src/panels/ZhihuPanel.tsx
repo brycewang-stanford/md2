@@ -40,7 +40,7 @@ export function ZhihuPanel({ doc, scrollRatio }: PanelProps) {
       const broken = out.warnings.filter((w) => w.code === 'local-image').length;
       if (broken) toast(t(`已复制，但 ${broken} 张图片知乎无法抓取（文件不存在？）`, `Copied, but Zhihu can’t fetch ${broken} images (missing files?)`), 'err');
       else if (unreachable) toast(t(`已复制，但 ${unreachable} 张远程图片的备用地址都无法访问，知乎可能上传失败`, `Copied, but ${unreachable} remote images had no reachable alternative`), 'err');
-      else if (inlined) toast(t(`已复制；${inlined} 张图片未推送到 GitHub，已内嵌为 base64`, `Copied; ${inlined} unpushed images inlined as base64`));
+      else if (inlined) toast(t(`已复制，但 ${inlined} 张图片未推送到 GitHub，知乎会上传失败：请先 git push 或设置 image_base`, `Copied, but ${inlined} unpushed images will fail on Zhihu — git push or set image_base first`), 'err');
       else toast(t('已复制，打开知乎写文章页粘贴', 'Copied — paste into Zhihu’s editor'));
     } catch (e) {
       console.error('md2: export failed', e);

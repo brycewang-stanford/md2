@@ -5,10 +5,12 @@
  * map local images to URLs the public internet can reach:
  *
  *   1. `imageBase` (front matter `image_base`) — your own image host / CDN prefix
- *   2. files committed and pushed to a GitHub remote → jsDelivr pinned to the
- *      pushed commit, else the wsrv.nl proxy of the raw file (each verified
- *      reachable, which also warms the cache before Zhihu fetches it)
- *   3. anything else → inlined data URL, as a last resort
+ *   2. files committed and pushed to a GitHub remote → the wsrv.nl proxy of the
+ *      raw file at the pushed commit, else jsDelivr (each verified reachable,
+ *      which also warms the cache before Zhihu fetches it)
+ *   3. anything else → inlined data URL, as a last resort. Zhihu does NOT
+ *      accept these (it maps every pasted data: image to one cached image), so
+ *      the caller warns that the file must be pushed or hosted first
  *
  * Remote images Zhihu tends to fail on (SVG, raw.githubusercontent.com) are
  * swapped for the first reachable of `zhihuImageCandidates`.
@@ -124,8 +126,8 @@ export async function publicImages(srcs: string[], baseDir: string, opts: Public
       }
       if (repo && isPushed(repo, file)) {
         const rel = relative(repo.root, file).split(sep).join('/');
-        // jsDelivr first, then the wsrv.nl proxy (each new commit is a cold jsDelivr cache,
-        // which can 503); SVG is converted to PNG since Zhihu only re-hosts raster images
+        // wsrv.nl first, then jsDelivr (each new commit is a cold jsDelivr cache, which
+        // Zhihu's fetcher can fail on); SVG is converted to PNG since Zhihu only re-hosts raster images
         const raw = `https://raw.githubusercontent.com/${repo.owner}/${repo.repo}/${repo.sha}/${encodePath(rel)}`;
         for (const url of zhihuImageCandidates(raw)) {
           if (await reachable(url)) {
