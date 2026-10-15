@@ -1,17 +1,20 @@
 #!/usr/bin/env node
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, resolve, basename, extname } from 'node:path';
-import { Command, Option } from 'commander';
+import { Argument, Command, Option } from 'commander';
+import { readFileSync } from 'node:fs';
 import {
-  themes, codeThemes, coverTemplates, coverSizes, xhsCardStyles, type CoverSizeId, type CoverTemplateId,
-  type XhsCardStyle,
+  themes, codeThemes, coverTemplates, coverSizes, xhsCardStyles, socialPlatforms, type CoverSizeId, type CoverTemplateId,
+  type XhsCardStyle, type SocialPlatformId, type StyleOptions,
 } from '@md2/core';
-import { wechatHtml, zhihuHtml, xThread, xhsExport, coverExport, publishWechat } from './actions.js';
+import {
+  wechatHtml, zhihuHtml, xThread, xhsExport, coverExport, publishWechat, longExport, aiSuggest, aiConfigFromEnv, type AiTask,
+} from './actions.js';
 import { copyHtml, copyText } from './clipboard.js';
 import { closeBrowser } from './browser.js';
 import { startMcpServer } from './mcp.js';
 
-const VERSION = '0.1.0';
+const VERSION = '0.2.0';
 
 const c = {
   green: (s: string) => `\x1b[32m${s}\x1b[0m`,
@@ -40,7 +43,25 @@ const styleOptions = (cmd: Command) =>
     .addOption(new Option('--code-theme <id>', 'code highlight theme').choices(codeThemes.map((t) => t.id)))
     .option('--color <hex>', 'override primary colour, e.g. "#d97757"')
     .option('--font-size <px>', 'base font size', (v) => Number(v))
-    .addOption(new Option('--font <family>', 'sans | serif | any CSS font-family'));
+    .addOption(new Option('--font <family>', 'sans | serif | any CSS font-family'))
+    .option('--line-height <n>', 'line height, e.g. 1.8', (v) => Number(v))
+    .option('--para-spacing <em>', 'space after paragraphs in em', (v) => Number(v))
+    .option('--letter-spacing <em>', 'letter spacing in em', (v) => Number(v))
+    .option('--indent', '首行缩进 2em')
+    .option('--justify', 'justify body text')
+    .addOption(new Option('--heading-align <a>', 'heading alignment').choices(['left', 'center']))
+    .option('--css <file>', 'extra CSS appended after the theme');
+
+/** StyleOptions from the shared CLI flags. */
+function style(o: Record<string, unknown>): StyleOptions {
+  return {
+    theme: o.theme as string, codeTheme: o.codeTheme as string, primaryColor: o.color as string,
+    fontSize: o.fontSize as number, fontFamily: o.font as string, lineHeight: o.lineHeight as number,
+    paragraphSpacing: o.paraSpacing as number, letterSpacing: o.letterSpacing as number,
+    textIndent: o.indent as boolean, justify: o.justify as boolean, headingAlign: o.headingAlign as 'left' | 'center',
+    customCss: o.css ? readFileSync(o.css as string, 'utf8') : undefined,
+  };
+}
 
 const program = new Command();
 program
@@ -58,11 +79,8 @@ styleOptions(
     .option('--no-link-refs', 'keep external links instead of converting them to references')
     .option('--no-mac', 'no macOS dots on code blocks')
     .option('--remove-title', 'drop the first H1'),
-).action((file, o) => {
-  const r = wechatHtml({ file }, {
-    theme: o.theme, codeTheme: o.codeTheme, primaryColor: o.color, fontSize: o.fontSize, fontFamily: o.font,
-    linkReferences: o.linkRefs, macCodeBlock: o.mac, removeTitle: o.removeTitle,
-  });
+).action(async (file, o) => {
+  const r = await wechatHtml({ file }, { ...style(o), linkReferences: o.linkRefs, macCodeBlock: o.mac, removeTitle: o.removeTitle }).finally(closeBrowser);
   warn(r.warnings);
   if (o.copy) {
     copyHtml(r.html, r.doc.markdown);
@@ -80,8 +98,8 @@ program
   .option('-c, --copy', 'copy rich text to clipboard, then paste into the Zhihu editor')
   .option('--keep-title', 'keep the first H1')
   .option('--links-as-refs', 'turn external links into Zhihu references')
-  .action((file, o) => {
-    const r = zhihuHtml({ file }, { removeTitle: !o.keepTitle, linksAsReferences: o.linksAsRefs });
+  .action(async (file, o) => {
+    const r = await zhihuHtml({ file }, { removeTitle: !o.keepTitle, linksAsReferences: o.linksAsRefs });
     warn(r.warnings);
     if (o.copy) {
       copyHtml(r.html, r.text);
@@ -107,7 +125,7 @@ styleOptions(
   const outDir = o.out ?? `${stem(file)}-xhs`;
   try {
     const r = await xhsExport({ file }, {
-      outDir, theme: o.theme, codeTheme: o.codeTheme, primaryColor: o.color, fontSize: o.fontSize, fontFamily: o.font,
+      outDir, ...style(o),
       cardStyle: o.cardStyle as XhsCardStyle, author: o.author, cover: o.cover === false ? false : { template: o.coverTemplate },
       hrPageBreak: o.hrBreak, pageNumbers: o.pageNumbers,
     });
@@ -121,19 +139,26 @@ styleOptions(
 });
 
 program
-  .command('x')
-  .alias('twitter')
-  .description('split an article into an X / Twitter thread')
+  .command('thread')
+  .aliases(['x', 'twitter'])
+  .description('split an article into a thread: X, Threads, Bluesky, Mastodon or one LinkedIn post')
   .argument('[file]', 'markdown file (default: stdin)')
+  .addOption(new Option('-p, --platform <id>', 'target platform').choices(Object.keys(socialPlatforms)).default('x'))
   .option('-o, --out <file>', 'write thread (.txt or .json)')
-  .option('-l, --limit <n>', 'max weighted length per post (Premium: 25000)', (v) => Number(v), 280)
+  .option('-l, --limit <n>', 'max length per post (X Premium: 25000)', (v) => Number(v))
   .option('--no-numbering', 'no "1/n" counters')
   .option('--no-title', "don't open with the title")
+  .option('--bold-headings', 'Unicode-bold headings (𝗹𝗶𝗸𝗲 𝘁𝗵𝗶𝘀)')
   .option('--include-code', 'keep code blocks as text')
   .option('--json', 'print JSON')
   .option('-c, --copy', 'copy the whole thread to clipboard')
-  .action((file, o) => {
-    const r = xThread({ file }, { limit: o.limit, numbering: o.numbering, titleFirst: o.title, includeCode: o.includeCode });
+  .action(async (file, o) => {
+    const platform = socialPlatforms[o.platform as SocialPlatformId];
+    const limit = o.limit ?? platform.limit;
+    const r = await xThread({ file }, {
+      platform: platform.id, limit, numbering: o.numbering === false ? false : undefined, titleFirst: o.title,
+      includeCode: o.includeCode, boldHeadings: o.boldHeadings,
+    });
     warn(r.warnings);
     const sep = '\n\n────────\n\n';
     const text = r.tweets.map((t) => t.text + (t.images.length ? `\n[images: ${t.images.join(', ')}]` : '')).join(sep);
@@ -142,9 +167,53 @@ program
     else if (o.json) process.stdout.write(JSON.stringify(r.tweets, null, 2) + '\n');
     else {
       r.tweets.forEach((t, i) => {
-        console.log(c.dim(`── ${i + 1}/${r.tweets.length} · ${t.length}/${o.limit}`));
+        console.log(c.dim(`── ${platform.name} ${i + 1}/${r.tweets.length} · ${t.length}/${limit}`));
         console.log(t.text + (t.images.length ? c.dim(`\n🖼  ${t.images.join(', ')}`) : '') + '\n');
       });
+    }
+  });
+
+styleOptions(
+  program
+    .command('long')
+    .description('render the whole article as one tall image (长图, 1080 px wide)')
+    .argument('[file]', 'markdown file')
+    .option('-o, --out <file>', 'output PNG')
+    .option('-w, --width <px>', 'layout width in CSS px (exported at 2×)', (v) => Number(v), 540)
+    .option('--no-header', 'no title header')
+    .option('--footer <text>', 'footer text'),
+).action(async (file, o) => {
+  try {
+    const out = o.out ?? `${stem(file)}-long.png`;
+    const r = await longExport({ file }, { out, ...style(o), width: o.width, header: o.header, footer: o.footer });
+    warn(r.warnings);
+    console.error(c.green('✓ ') + r.file);
+  } finally {
+    await closeBrowser();
+  }
+});
+
+program
+  .command('ai')
+  .description('AI copywriting with your own key (ANTHROPIC_API_KEY, or MD2_AI_BASE_URL/MD2_AI_API_KEY/MD2_AI_MODEL)')
+  .addArgument(new Argument('<task>', 'what to write').choices(['xhs', 'thread', 'wechat', 'cover']))
+  .argument('[file]', 'markdown file (default: stdin)')
+  .addOption(new Option('-p, --platform <id>', 'thread platform').choices(Object.keys(socialPlatforms)).default('x'))
+  .option('-m, --model <id>', 'model id (default claude-opus-5-5)')
+  .option('--json', 'print raw JSON')
+  .action(async (task: AiTask, file, o) => {
+    const cfg = aiConfigFromEnv({ model: o.model });
+    console.error(c.dim(`… ${cfg.provider === 'anthropic' ? 'Claude' : cfg.baseURL} · ${cfg.model || 'default model'}`));
+    const r = (await aiSuggest({ file }, task, cfg, o.platform)) as unknown as Record<string, unknown>;
+    if (o.json) {
+      process.stdout.write(JSON.stringify(r, null, 2) + '\n');
+      return;
+    }
+    for (const [k, v] of Object.entries(r)) {
+      console.log(c.bold(k));
+      if (Array.isArray(v)) v.forEach((x, i) => console.log(`  ${i + 1}. ${String(x).replace(/\n/g, '\n     ')}`));
+      else console.log('  ' + String(v).replace(/\n/g, '\n  '));
+      console.log();
     }
   });
 
@@ -201,8 +270,7 @@ styleOptions(
   try {
     const r = await publishWechat({ file }, {
       appId: o.appid, appSecret: o.secret, cover: o.cover, coverTemplate: o.coverTemplate, author: o.author,
-      digest: o.digest, sourceUrl: o.sourceUrl, openComment: o.openComment, dryRun: o.dryRun,
-      theme: o.theme, codeTheme: o.codeTheme, primaryColor: o.color, fontSize: o.fontSize, fontFamily: o.font,
+      digest: o.digest, sourceUrl: o.sourceUrl, openComment: o.openComment, dryRun: o.dryRun, ...style(o),
       onProgress: (m) => console.error(c.dim(m)),
     });
     warn(r.warnings);
@@ -224,6 +292,8 @@ program
     xhsCardStyles.forEach((s) => console.log(`  ${s.id.padEnd(12)} ${s.name}`));
     console.log(c.bold('\nCover templates'));
     coverTemplates.forEach((t) => console.log(`  ${t.id.padEnd(12)} ${t.name}`));
+    console.log(c.bold('\nThread platforms'));
+    Object.values(socialPlatforms).forEach((p) => console.log(`  ${p.id.padEnd(12)} ${p.name} · ${p.limit}`));
     console.log(c.bold('\nCover sizes'));
     Object.entries(coverSizes).forEach(([id, s]) => console.log(`  ${id.padEnd(14)} ${s.width}×${s.height}  ${s.label}`));
   });

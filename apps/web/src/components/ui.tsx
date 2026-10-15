@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { themes, codeThemes, type Theme } from '@md2/core';
+import { t as tr, getLang } from '../lib/i18n';
 
 export function Icon({ name, size = 16 }: { name: keyof typeof ICONS; size?: number }) {
   return (
@@ -23,6 +24,11 @@ const ICONS = {
   image: <><rect x="3" y="3" width="18" height="18" rx="3" /><circle cx="9" cy="9" r="2" /><path d="m21 15-5-5L5 21" /></>,
   alert: <><path d="M12 9v4M12 17h.01" /><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /></>,
   reset: <><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /></>,
+  sliders: <><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0" /><circle cx="16" cy="6" r="2" /><circle cx="10" cy="12" r="2" /><circle cx="18" cy="18" r="2" /></>,
+  wand: <><path d="m15 4 5 5L9 20H4v-5z" /><path d="m13 6 5 5" /><path d="M19 2v3M17.5 3.5h3" /></>,
+  key: <><circle cx="8" cy="15" r="4" /><path d="m11 12 9-9M17 6l3 3M15 8l2 2" /></>,
+  globe: <><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" /></>,
+  close: <path d="M6 6l12 12M18 6 6 18" />,
 };
 
 export function Button({
@@ -98,7 +104,7 @@ export function ColorField({ label, value, fallback, onChange }: { label?: strin
         <input type="color" value={current} onChange={(e) => onChange(e.target.value)} />
         <span className="color-hex">{current}</span>
         {value && (
-          <button type="button" className="icon-btn" title="恢复主题默认色" onClick={(e) => (e.preventDefault(), onChange(''))}>
+          <button type="button" className="icon-btn" title={tr('恢复主题默认色', 'Reset to theme colour')} onClick={(e) => (e.preventDefault(), onChange(''))}>
             <Icon name="reset" size={13} />
           </button>
         )}
@@ -107,7 +113,7 @@ export function ColorField({ label, value, fallback, onChange }: { label?: strin
   );
 }
 
-function useOutside(ref: React.RefObject<HTMLElement | null>, onOutside: () => void, active: boolean) {
+export function useOutside(ref: React.RefObject<HTMLElement | null>, onOutside: () => void, active: boolean) {
   useEffect(() => {
     if (!active) return;
     const h = (e: MouseEvent) => {
@@ -133,7 +139,7 @@ export function ThemePicker({ value, onChange }: { value: string; onChange: (id:
     <div className="picker" ref={ref}>
       <button type="button" className="picker-btn" onClick={() => setOpen(!open)} aria-expanded={open}>
         <Swatch theme={cur} />
-        <span className="picker-name">{cur.name}</span>
+        <span className="picker-name">{getLang() === 'zh' ? cur.name : cur.nameEn}</span>
         <Icon name="chevron" size={14} />
       </button>
       {open && (
@@ -152,10 +158,10 @@ export function ThemePicker({ value, onChange }: { value: string; onChange: (id:
             >
               <ThemeThumb theme={t} />
               <span className="theme-card-name">
-                {t.name}
-                <em>{t.nameEn !== t.name ? t.nameEn : ''}</em>
+                {getLang() === 'zh' ? t.name : t.nameEn}
+                <em>{getLang() === 'zh' && t.nameEn !== t.name ? t.nameEn : ''}</em>
               </span>
-              <span className="theme-card-desc">{t.description}</span>
+              <span className="theme-card-desc">{getLang() === 'zh' ? t.description : t.descriptionEn}</span>
             </button>
           ))}
         </div>

@@ -435,3 +435,90 @@ export async function layoutXhsCardsAsync(host: HTMLElement, layout: XhsLayout):
   await Promise.all([preloadImages(layout.contentHtml, doc), preloadImages(layout.cover?.html ?? '', doc), doc.fonts?.ready]);
   return layoutXhsCards(host, layout);
 }
+
+// ───────────────────────────── diagrams ─────────────────────────────
+
+const SVG_PROPS = [
+  'fill', 'fill-opacity', 'stroke', 'stroke-width', 'stroke-opacity', 'stroke-dasharray', 'stroke-linecap',
+  'stroke-linejoin', 'opacity', 'font-family', 'font-size', 'font-weight', 'font-style', 'text-anchor',
+  'dominant-baseline', 'marker-start', 'marker-end', 'visibility',
+];
+const INHERITED = new Set(['fill', 'fill-opacity', 'stroke', 'stroke-width', 'stroke-opacity', 'stroke-dasharray', 'stroke-linecap', 'stroke-linejoin', 'font-family', 'font-size', 'font-weight', 'font-style', 'text-anchor', 'visibility']);
+
+/**
+ * Bake computed CSS into presentation styles and drop `<style>` blocks, so the
+ * SVG renders identically where stylesheets are stripped (WeChat, Zhihu, email).
+ * The SVG must be attached to the document.
+ */
+export function inlineSvgStyles(svg: SVGSVGElement) {
+  const computed = new Map<Element, CSSStyleDeclaration>();
+  const all = [svg, ...Array.from(svg.querySelectorAll('*'))];
+  for (const el of all) computed.set(el, getComputedStyle(el));
+  for (const el of all) {
+    if (el.tagName === 'style' || el.tagName === 'title') continue;
+    const cs = computed.get(el)!;
+    const parent = el.parentElement ? computed.get(el.parentElement) : undefined;
+    const parts: string[] = [];
+    for (const p of SVG_PROPS) {
+      const v = cs.getPropertyValue(p);
+      if (!v) continue;
+      if (INHERITED.has(p) && parent && parent.getPropertyValue(p) === v && el !== svg) continue;
+      if ((p === 'marker-start' || p === 'marker-end') && v === 'none') continue;
+      if (p === 'opacity' && v === '1') continue;
+      parts.push(`${p}:${v}`);
+    }
+    if (parts.length) el.setAttribute('style', parts.join(';'));
+    else el.removeAttribute('style');
+  }
+  svg.querySelectorAll('style').forEach((s) => s.remove());
+}
+
+interface MermaidLike {
+  render: (id: string, text: string) => Promise<{ svg: string }>;
+}
+
+let diagramSeq = 0;
+
+/**
+ * Render a Mermaid diagram to a self-contained, paste-safe SVG string.
+ * Pass an initialised mermaid instance (with `htmlLabels: false` so labels are
+ * real SVG text rather than `<foreignObject>` HTML).
+ */
+export async function renderMermaidSvg(mermaid: MermaidLike, code: string, doc: Document = document): Promise<string> {
+  const host = doc.createElement('div');
+  host.style.cssText = 'position:fixed;left:-20000px;top:0;width:900px;';
+  doc.body.appendChild(host);
+  try {
+    const { svg } = await mermaid.render(`md2-diagram-${++diagramSeq}`, code);
+    host.innerHTML = svg;
+    const el = host.querySelector('svg') as SVGSVGElement | null;
+    if (!el) throw new Error('mermaid returned no svg');
+    inlineSvgStyles(el);
+    const vb = el.viewBox?.baseVal;
+    if (vb && vb.width) {
+      el.setAttribute('width', String(Math.round(vb.width)));
+      el.setAttribute('height', String(Math.round(vb.height)));
+    }
+    el.setAttribute('style', `${el.getAttribute('style') ?? ''};max-width:100%;height:auto;display:inline-block`);
+    el.removeAttribute('role');
+    el.removeAttribute('aria-roledescription');
+    return el.outerHTML;
+  } finally {
+    host.remove();
+  }
+}
+
+/** Mermaid config that produces paste-safe SVG in a given accent colour. */
+export function mermaidConfig(accent = '#d97757', dark = false) {
+  return {
+    startOnLoad: false,
+    securityLevel: 'strict',
+    htmlLabels: false,
+    flowchart: { htmlLabels: false, curve: 'basis' },
+    theme: 'base',
+    fontFamily: '-apple-system, "PingFang SC", "Microsoft YaHei", sans-serif',
+    themeVariables: dark
+      ? { darkMode: true, background: '#13141c', primaryColor: '#1f2335', primaryTextColor: '#e6e9f5', primaryBorderColor: accent, lineColor: '#7a82a6', secondaryColor: '#24283b', tertiaryColor: '#1a1b26', fontSize: '14px' }
+      : { primaryColor: '#ffffff', primaryTextColor: '#1f2328', primaryBorderColor: accent, lineColor: '#8a8f98', secondaryColor: '#f5f5f7', tertiaryColor: '#fafafa', fontSize: '14px' },
+  };
+}

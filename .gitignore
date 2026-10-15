@@ -5,3 +5,6 @@ dist
 out/
 .md2/
 coverage
+.vscode-test/
+apps/vscode/media/app/
+*.vsix

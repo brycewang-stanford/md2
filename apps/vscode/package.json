@@ -1,0 +1,252 @@
+{
+  "name": "md2",
+  "displayName": "md2 — Markdown to WeChat, Zhihu, Xiaohongshu & Threads",
+  "description": "Live-preview and export Markdown for 公众号 (WeChat), 知乎 (Zhihu), 小红书 (Xiaohongshu) image cards, X / Threads / Bluesky / LinkedIn threads, long images and covers — 16 modern themes, math, Mermaid, AI copywriting.",
+  "version": "0.2.0",
+  "publisher": "brycewang",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#141413",
+    "theme": "dark"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/brycewang-stanford/md2"
+  },
+  "homepage": "https://github.com/brycewang-stanford/md2",
+  "bugs": {
+    "url": "https://github.com/brycewang-stanford/md2/issues"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Visualization",
+    "Formatters",
+    "Other"
+  ],
+  "keywords": [
+    "markdown",
+    "wechat",
+    "公众号",
+    "微信",
+    "zhihu",
+    "知乎",
+    "xiaohongshu",
+    "小红书",
+    "rednote",
+    "twitter",
+    "x",
+    "threads",
+    "bluesky",
+    "linkedin",
+    "排版",
+    "cover",
+    "封面",
+    "mermaid",
+    "latex"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onLanguage:markdown",
+    "onWebviewPanel:md2.preview"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "md2.openPreview",
+        "title": "Open md2 Preview",
+        "category": "md2",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "md2.copyWechat",
+        "title": "Copy for WeChat (公众号)",
+        "category": "md2"
+      },
+      {
+        "command": "md2.copyZhihu",
+        "title": "Copy for Zhihu (知乎)",
+        "category": "md2"
+      },
+      {
+        "command": "md2.exportXhs",
+        "title": "Export Xiaohongshu Cards (小红书)",
+        "category": "md2"
+      },
+      {
+        "command": "md2.copyThread",
+        "title": "Copy Thread (X / Threads / Bluesky / LinkedIn)",
+        "category": "md2"
+      },
+      {
+        "command": "md2.exportLong",
+        "title": "Export Long Image (长图)",
+        "category": "md2"
+      },
+      {
+        "command": "md2.exportCover",
+        "title": "Export Cover (封面)",
+        "category": "md2"
+      },
+      {
+        "command": "md2.publishWechat",
+        "title": "Publish to WeChat Drafts (公众号草稿箱)",
+        "category": "md2"
+      },
+      {
+        "command": "md2.setWechatCredentials",
+        "title": "Set WeChat AppID / AppSecret",
+        "category": "md2"
+      },
+      {
+        "command": "md2.clearSecrets",
+        "title": "Clear Stored Keys (WeChat & AI)",
+        "category": "md2"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "md2.openPreview",
+          "when": "editorLangId == markdown && !notebookEditorFocused",
+          "group": "navigation@10"
+        }
+      ],
+      "editor/context": [
+        {
+          "submenu": "md2.menu",
+          "when": "editorLangId == markdown",
+          "group": "navigation@90"
+        }
+      ],
+      "md2.menu": [
+        {
+          "command": "md2.openPreview",
+          "group": "1_preview"
+        },
+        {
+          "command": "md2.copyWechat",
+          "group": "2_copy@1"
+        },
+        {
+          "command": "md2.copyZhihu",
+          "group": "2_copy@2"
+        },
+        {
+          "command": "md2.copyThread",
+          "group": "2_copy@3"
+        },
+        {
+          "command": "md2.exportXhs",
+          "group": "3_export@1"
+        },
+        {
+          "command": "md2.exportLong",
+          "group": "3_export@2"
+        },
+        {
+          "command": "md2.exportCover",
+          "group": "3_export@3"
+        },
+        {
+          "command": "md2.publishWechat",
+          "group": "4_publish"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "md2.copyWechat",
+          "when": "editorLangId == markdown"
+        },
+        {
+          "command": "md2.copyZhihu",
+          "when": "editorLangId == markdown"
+        },
+        {
+          "command": "md2.exportXhs",
+          "when": "editorLangId == markdown"
+        },
+        {
+          "command": "md2.copyThread",
+          "when": "editorLangId == markdown"
+        },
+        {
+          "command": "md2.exportLong",
+          "when": "editorLangId == markdown"
+        },
+        {
+          "command": "md2.exportCover",
+          "when": "editorLangId == markdown"
+        },
+        {
+          "command": "md2.publishWechat",
+          "when": "editorLangId == markdown"
+        }
+      ]
+    },
+    "submenus": [
+      {
+        "id": "md2.menu",
+        "label": "md2"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "md2.openPreview",
+        "key": "ctrl+alt+m",
+        "mac": "cmd+alt+m",
+        "when": "editorLangId == markdown"
+      }
+    ],
+    "configuration": {
+      "title": "md2",
+      "properties": {
+        "md2.exportFolder": {
+          "type": "string",
+          "default": "md2-export",
+          "description": "Folder (relative to the Markdown file) where images and HTML are saved."
+        },
+        "md2.revealAfterExport": {
+          "type": "boolean",
+          "default": true,
+          "description": "Offer to reveal exported files in the OS file manager."
+        },
+        "md2.wechat.coverTemplate": {
+          "type": "string",
+          "default": "aurora",
+          "enum": [
+            "aurora",
+            "glass",
+            "claude",
+            "bento",
+            "swiss",
+            "brutal",
+            "terminal",
+            "notes",
+            "editorial",
+            "photo"
+          ],
+          "description": "Cover template used when publishing an article that has no cover image."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "package": "node build.mjs && vsce package --no-dependencies",
+    "test": "node test/run.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/vscode": "1.90.0",
+    "@vscode/test-electron": "^3.1.0",
+    "@vscode/vsce": "^4.0.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@md2/core": "workspace:*"
+  }
+}

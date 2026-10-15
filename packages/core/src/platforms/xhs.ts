@@ -7,7 +7,7 @@ import { getTheme, themeCss, themeVars, type StyleOptions } from '../themes/inde
 import { renderCover, type CoverOptions, type CoverRender } from '../cover/index.js';
 import { toPlainBlocks } from '../plain.js';
 import { cloneTree, extractFootnotes, transformMath } from '../transforms.js';
-import type { ParsedDoc, RenderWarning } from '../types.js';
+import type { DiagramResolver, ParsedDoc, RenderWarning } from '../types.js';
 
 export type XhsCardStyle = 'clean' | 'ivory' | 'notes' | 'grid' | 'aurora' | 'bento' | 'brutal' | 'midnight';
 
@@ -37,6 +37,7 @@ export interface XhsOptions extends StyleOptions {
   /** Remove the first H1 from the cards (it is on the cover). Default true when cover is on */
   removeTitle?: boolean;
   resolveImage?: (src: string) => string | undefined;
+  diagram?: DiagramResolver;
 }
 
 /** Everything the DOM paginator needs to lay out cards (see `layoutXhsCards`). */
@@ -98,6 +99,7 @@ const CARD_CSS = `
 .xhs-card .md2 img { max-height: 520px; object-fit: contain; }
 .xhs-card .md2 .math-block { overflow: visible; }
 .xhs-card .md2 .math-block svg { max-width: 100%; height: auto; }
+.xhs-card .md2 .diagram svg { max-width: 100%; height: auto; max-height: 560px; }
 .xhs-card .md2 a, .xhs-card .md2 .link { overflow-wrap: anywhere; }
 .xhs-card .md2 h1 { margin-top: 0.2em; }
 .xhs-card .md2 li[data-md2-cont] { list-style-type: none; }
@@ -142,6 +144,7 @@ export function renderXhs(input: string | ParsedDoc, opts: XhsOptions = {}): Xhs
     figureCaption: true,
     removeTitle: opts.removeTitle ?? coverOn,
     resolveImage: opts.resolveImage,
+    diagram: opts.diagram,
   });
   const contentHtml = toHtml(root, { allowDangerousHtml: true });
 

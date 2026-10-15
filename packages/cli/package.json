@@ -1,6 +1,6 @@
 {
   "name": "md2all",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Markdown \u2192 \u516c\u4f17\u53f7 / \u77e5\u4e4e / \u5c0f\u7ea2\u4e66 / X. CLI + MCP server for md2.",
   "license": "MIT",
   "type": "module",
@@ -32,13 +32,14 @@
     "node": ">=20"
   },
   "devDependencies": {
+    "@md2/core": "workspace:*",
     "@types/node": "^26.6.5",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
-    "vitest": "^5.0.4",
-    "@md2/core": "workspace:*"
+    "vitest": "^5.0.4"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.134.0",
     "@modelcontextprotocol/sdk": "^1.32.1",
     "commander": "^15.0.0",
     "hast-util-from-html": "^2.0.3",
@@ -48,6 +49,7 @@
     "hastscript": "^9.0.1",
     "lowlight": "^3.3.0",
     "mathjax-full": "^3.2.2",
+    "mermaid": "^12.2.0",
     "playwright-core": "^1.64.1",
     "postcss": "^8.5.30",
     "rehype-raw": "^7.0.0",

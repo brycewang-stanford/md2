@@ -1,5 +1,6 @@
-import { readFileSync, mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync, mkdirSync, existsSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { createRequire } from 'node:module';
 import { chromium, type Browser, type Page } from 'playwright-core';
 import type { CoverRender, XhsLayout } from '@md2/core';
 
@@ -118,6 +119,75 @@ export async function renderCoverPng(cover: CoverRender, file: string): Promise<
       w.Md2Dom.mountCover(document.getElementById('host')!, c);
     }, cover as unknown as Record<string, unknown>);
     const el = await page.$('#host .md2-cover');
+    await el!.screenshot({ path: file, animations: 'disabled' });
+    return file;
+  } finally {
+    await page.close();
+  }
+}
+
+function mermaidPath(): string {
+  const require = createRequire(import.meta.url);
+  for (const spec of ['mermaid/dist/mermaid.min.js', 'mermaid']) {
+    try {
+      const p = require.resolve(spec);
+      const file = spec === 'mermaid' ? join(dirname(p), 'mermaid.min.js') : p;
+      if (existsSync(file)) return file;
+    } catch {
+      /* next */
+    }
+  }
+  throw new Error('mermaid is not installed (npm i mermaid)');
+}
+
+/** Render diagram blocks to paste-safe SVG strings, keyed by their source code. */
+export async function renderDiagrams(diagrams: { lang: string; code: string }[], accent?: string, dark = false): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  const todo = diagrams.filter((d) => d.lang === 'mermaid');
+  if (!todo.length) return out;
+  const page = await newPage(900);
+  try {
+    await page.addScriptTag({ path: mermaidPath() });
+    const svgs = await page.evaluate(
+      async ({ codes, accent, dark }) => {
+        const w = window as unknown as {
+          mermaid: { initialize: (c: unknown) => void; render: (id: string, t: string) => Promise<{ svg: string }> };
+          Md2Dom: { mermaidConfig: (a?: string, d?: boolean) => unknown; renderMermaidSvg: (m: unknown, c: string) => Promise<string> };
+        };
+        w.mermaid.initialize(w.Md2Dom.mermaidConfig(accent, dark));
+        const res: (string | null)[] = [];
+        for (const c of codes) {
+          try {
+            res.push(await w.Md2Dom.renderMermaidSvg(w.mermaid, c));
+          } catch {
+            res.push(null);
+          }
+        }
+        return res;
+      },
+      { codes: todo.map((d) => d.code), accent, dark },
+    );
+    todo.forEach((d, i) => {
+      if (svgs[i]) out.set(d.code, svgs[i]!);
+    });
+    return out;
+  } finally {
+    await page.close();
+  }
+}
+
+/** Screenshot a self-contained HTML block (e.g. a 长图) at 2×. */
+export async function renderHtmlPng(html: string, width: number, file: string, selector = ':scope > *'): Promise<string> {
+  mkdirSync(dirname(file), { recursive: true });
+  const page = await newPage(width);
+  try {
+    await page.evaluate(async (h) => {
+      const host = document.getElementById('host')!;
+      host.innerHTML = h;
+      await Promise.all(Array.from(document.images).map((i) => (i.complete ? null : new Promise((r) => { i.onload = i.onerror = r; }))));
+      await document.fonts.ready;
+    }, html);
+    const el = await page.$(`#host ${selector === ':scope > *' ? '> *' : selector}`);
     await el!.screenshot({ path: file, animations: 'disabled' });
     return file;
   } finally {

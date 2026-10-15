@@ -9,6 +9,7 @@ export interface Theme {
   name: string;
   nameEn: string;
   description: string;
+  descriptionEn: string;
   primary: string;
   /** Default code theme for this article theme */
   codeTheme: string;
@@ -36,6 +37,16 @@ export interface StyleOptions {
   /** 'sans' | 'serif' | any CSS font-family */
   fontFamily?: string;
   lineHeight?: number;
+  /** Space after paragraphs, in em */
+  paragraphSpacing?: number;
+  /** Letter spacing, in em */
+  letterSpacing?: number;
+  /** 首行缩进: indent body paragraphs by 2em */
+  textIndent?: boolean;
+  /** Justify body text */
+  justify?: boolean;
+  /** Force heading alignment */
+  headingAlign?: 'left' | 'center';
   /** Appended after the theme, highest priority */
   customCss?: string;
 }
@@ -105,6 +116,7 @@ const BASE_CSS = `
 .md2 .ref-url { color: var(--md2-muted); font-style: italic; }
 .md2 kbd { font-family: var(--md2-mono); font-size: 0.85em; padding: 1px 6px; border: 1px solid var(--md2-border); border-bottom-width: 2px; border-radius: 4px; background: #fafafa; }
 .md2 .task { color: var(--md2-primary); }
+.md2 .diagram { display: block; margin: 1.3em 0; text-align: center; overflow-x: auto; }
 `;
 
 export const themes: Theme[] = [
@@ -113,6 +125,7 @@ export const themes: Theme[] = [
     name: 'Claude',
     nameEn: 'Claude',
     description: '暖象牙 + 陶土橙，衬线标题，安静克制',
+    descriptionEn: 'Warm ivory and clay, serif headings, calm',
     primary: '#d97757',
     codeTheme: 'rose-pine-dawn',
     prefix: { h2: '✱ ' },
@@ -136,6 +149,7 @@ export const themes: Theme[] = [
     name: 'Linear',
     nameEn: 'Linear',
     description: '靛紫强调，紧凑无衬线，产品发布感',
+    descriptionEn: 'Indigo accent, tight sans, product-launch feel',
     primary: '#5e6ad2',
     codeTheme: 'github-light',
     vars: {
@@ -160,6 +174,7 @@ export const themes: Theme[] = [
     name: 'Geist 黑白',
     nameEn: 'Geist',
     description: 'Vercel 式纯黑白，细线网格，等宽点缀',
+    descriptionEn: 'Vercel-style black & white, hairlines, mono accents',
     primary: '#000000',
     codeTheme: 'vitesse-light',
     prefix: { h3: '/ ' },
@@ -184,6 +199,7 @@ export const themes: Theme[] = [
     name: 'Apple 发布会',
     nameEn: 'Newsroom',
     description: 'SF 字体、大标题、#0071e3 链接蓝、圆角卡片',
+    descriptionEn: 'SF type, big headlines, #0071e3 links, rounded cards',
     primary: '#0071e3',
     codeTheme: 'github-light',
     vars: {
@@ -207,6 +223,7 @@ export const themes: Theme[] = [
     name: '杂志编辑',
     nameEn: 'Editorial',
     description: '衬线正文、引语大字、细线分隔，长文阅读感',
+    descriptionEn: 'Serif body, big pull quotes, fine rules — long reads',
     primary: '#b4441c',
     codeTheme: 'rose-pine-dawn',
     vars: {
@@ -230,6 +247,7 @@ export const themes: Theme[] = [
     name: '瑞士国际主义',
     nameEn: 'Swiss',
     description: 'Helvetica、红色方块、粗黑规线，网格秩序',
+    descriptionEn: 'Helvetica, red squares, heavy rules, grid order',
     primary: '#ff3b30',
     codeTheme: 'github-light',
     prefix: { h2: '■ ' },
@@ -255,6 +273,7 @@ export const themes: Theme[] = [
     name: '新野兽派',
     nameEn: 'Neo-Brutal',
     description: '粗黑描边 + 硬投影 + 高饱和黄，年轻有冲击力',
+    descriptionEn: 'Thick outlines, hard shadows, loud yellow',
     primary: '#ffd23f',
     codeTheme: 'github-light',
     vars: {
@@ -280,6 +299,7 @@ export const themes: Theme[] = [
     name: '便当卡片',
     nameEn: 'Bento',
     description: '大圆角柔和卡片 + 胶囊标题，现代 App 质感',
+    descriptionEn: 'Soft rounded cards and pill headings, app-like',
     primary: '#7c5cff',
     codeTheme: 'catppuccin-latte',
     vars: {
@@ -301,6 +321,7 @@ export const themes: Theme[] = [
     name: '极光渐变',
     nameEn: 'Aurora',
     description: '紫青渐变胶囊、渐变分隔条，科技感但不浮夸',
+    descriptionEn: 'Violet-teal gradient pills and dividers',
     primary: '#7f5af0',
     codeTheme: 'tokyo-night',
     vars: { '--md2-text': '#2e2e3a', '--md2-heading': '#16161f', '--md2-quote-bg': '#f5f3ff', '--md2-quote-text': '#3b3a4a' },
@@ -319,6 +340,7 @@ export const themes: Theme[] = [
     name: '深夜模式',
     nameEn: 'Midnight',
     description: '深色背景整篇阅读，Tokyo Night 配色',
+    descriptionEn: 'Full dark reading mode, Tokyo Night palette',
     primary: '#7aa2f7',
     codeTheme: 'tokyo-night',
     vars: {
@@ -341,6 +363,7 @@ export const themes: Theme[] = [
     name: '抹茶',
     nameEn: 'Matcha',
     description: '低饱和抹茶绿与米白，温柔耐看',
+    descriptionEn: 'Muted matcha green on cream, gentle',
     primary: '#5b8c5a',
     codeTheme: 'vitesse-light',
     vars: { '--md2-text': '#34392f', '--md2-heading': '#1f241c', '--md2-quote-bg': '#f1f5ec', '--md2-quote-text': '#3e4a3a', '--md2-border': '#e3e8dc', '--md2-th-bg': '#f1f5ec' },
@@ -357,6 +380,7 @@ export const themes: Theme[] = [
     name: '侘寂',
     nameEn: 'Wabi',
     description: '大留白、宽字距、灰褐色调，日式静谧',
+    descriptionEn: 'Generous space, wide tracking, taupe — Japanese calm',
     primary: '#8c7b6b',
     codeTheme: 'rose-pine-dawn',
     prefix: { h2: '— ' },
@@ -380,6 +404,7 @@ export const themes: Theme[] = [
     name: '学术 Distill',
     nameEn: 'Distill',
     description: '论文式排版：三线表、图注、衬线正文、无花哨装饰',
+    descriptionEn: 'Paper-style: booktabs tables, captions, serif body',
     primary: '#2a5db0',
     codeTheme: 'github-light',
     vars: {
@@ -403,6 +428,7 @@ export const themes: Theme[] = [
     name: '珊瑚生活',
     nameEn: 'Coral',
     description: '珊瑚红胶囊标题、圆润卡片，适合生活方式内容',
+    descriptionEn: 'Coral pill headings, rounded cards — lifestyle',
     primary: '#ff5a5f',
     codeTheme: 'catppuccin-latte',
     vars: { '--md2-text': '#3a3335', '--md2-heading': '#231d1f', '--md2-quote-bg': '#fff2f1', '--md2-quote-text': '#5b4447' },
@@ -421,6 +447,7 @@ export const themes: Theme[] = [
     name: 'Stripe 文档',
     nameEn: 'Stripe',
     description: '深海军蓝标题 + 蓝紫强调，开发者文档的精致感',
+    descriptionEn: 'Navy headings, blurple accent — polished dev docs',
     primary: '#635bff',
     codeTheme: 'github-dark',
     vars: {
@@ -443,6 +470,7 @@ export const themes: Theme[] = [
     name: '宋韵',
     nameEn: 'Song',
     description: '宋体正文、朱砂点缀、对称标题，现代中式',
+    descriptionEn: 'Song serif, cinnabar accents, symmetric headings',
     primary: '#b23a2e',
     codeTheme: 'rose-pine-dawn',
     prefix: { h2: '〔 ' },
@@ -510,11 +538,22 @@ export function themeVars(theme: Theme, opts: StyleOptions = {}): Record<string,
   return vars;
 }
 
+/** CSS generated from the fine-tuning options; placed after the theme so it wins. */
+export function tuningCss(opts: StyleOptions): string {
+  const out: string[] = [];
+  if (opts.letterSpacing !== undefined) out.push(`.md2 { letter-spacing: ${opts.letterSpacing}em; }`);
+  if (opts.justify !== undefined) out.push(`.md2 { text-align: ${opts.justify ? 'justify' : 'left'}; }`);
+  if (opts.paragraphSpacing !== undefined) out.push(`.md2 p { margin-bottom: ${opts.paragraphSpacing}em; }`);
+  if (opts.textIndent) out.push('.md2 > p { text-indent: 2em; }');
+  if (opts.headingAlign) out.push(`.md2 h1, .md2 h2, .md2 h3 { text-align: ${opts.headingAlign}; }`);
+  return out.join('\n');
+}
+
 /** Full stylesheet for a theme (base + theme + code theme + custom). */
 export function themeCss(theme: Theme, opts: StyleOptions = {}): string {
   const code = getCodeTheme(opts.codeTheme || theme.codeTheme);
   const scopedCode = code.css.replace(/(^|\n)(\.hljs[^{]*)\{/g, (_, nl, sel: string) =>
     nl + sel.split(',').map((s) => `.md2 ${s.trim()}`).join(', ') + ' {',
   );
-  return [BASE_CSS, theme.css, scopedCode, opts.customCss ?? ''].join('\n');
+  return [BASE_CSS, theme.css, scopedCode, tuningCss(opts), opts.customCss ?? ''].join('\n');
 }

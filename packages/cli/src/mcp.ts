@@ -3,11 +3,13 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod';
 import { resolve } from 'node:path';
 import {
-  themes, codeThemes, coverTemplates, coverSizes, xhsCardStyles, type CoverSizeId, type CoverTemplateId,
-  type XhsCardStyle,
+  themes, codeThemes, coverTemplates, coverSizes, xhsCardStyles, socialPlatforms, type CoverSizeId, type CoverTemplateId,
+  type XhsCardStyle, type SocialPlatformId,
 } from '@md2/core';
 import { closeBrowser } from './browser.js';
-import { wechatHtml, zhihuHtml, xThread, xhsExport, coverExport, publishWechat, type Source } from './actions.js';
+import {
+  wechatHtml, zhihuHtml, xThread, xhsExport, coverExport, publishWechat, longExport, aiSuggest, aiConfigFromEnv, type Source, type AiTask,
+} from './actions.js';
 
 const source = {
   path: z.string().optional().describe('Path to a Markdown file'),
@@ -34,7 +36,7 @@ export async function startMcpServer(version: string) {
     description: 'Convert Markdown to WeChat Official Account (公众号) HTML with every style inlined, ready to paste into the WeChat editor.',
     inputSchema: { ...source, ...style },
   }, async (a) => {
-    const r = wechatHtml(src(a), { theme: a.theme, codeTheme: a.codeTheme, primaryColor: a.primaryColor });
+    const r = await wechatHtml(src(a), { theme: a.theme, codeTheme: a.codeTheme, primaryColor: a.primaryColor });
     return text(r.html + (r.warnings.length ? `\n\n<!-- warnings: ${r.warnings.map((w) => w.message).join('; ')} -->` : ''));
   });
 
@@ -42,13 +44,36 @@ export async function startMcpServer(version: string) {
     title: 'Render Zhihu article HTML',
     description: 'Convert Markdown to Zhihu (知乎) HTML: formulas as Zhihu equations, code blocks with lang, footnotes as native references.',
     inputSchema: { ...source },
-  }, async (a) => text(zhihuHtml(src(a)).html));
+  }, async (a) => text((await zhihuHtml(src(a))).html));
 
-  server.registerTool('md2_x_thread', {
-    title: 'Split into an X/Twitter thread',
-    description: 'Split a Markdown article into X (Twitter) posts using X weighted length (CJK = 2, URL = 23).',
-    inputSchema: { ...source, limit: z.number().int().optional().describe('Max weighted length per post (default 280)') },
-  }, async (a) => text(JSON.stringify(xThread(src(a), { limit: a.limit }).tweets, null, 2)));
+  server.registerTool('md2_thread', {
+    title: 'Split into a social thread',
+    description: 'Split a Markdown article into a thread for X (weighted length: CJK = 2, URL = 23), Threads, Bluesky, Mastodon, or a single LinkedIn post.',
+    inputSchema: {
+      ...source,
+      platform: z.enum(Object.keys(socialPlatforms) as [string, ...string[]]).optional().describe('Default x'),
+      limit: z.number().int().optional().describe('Max length per post (platform default)'),
+    },
+  }, async (a) => text(JSON.stringify((await xThread(src(a), { platform: a.platform as SocialPlatformId | undefined, limit: a.limit })).tweets, null, 2)));
+
+  server.registerTool('md2_long_image', {
+    title: 'Render a long image',
+    description: 'Render the whole article as one tall PNG (长图, 1080 px wide) for WeChat Moments, Weibo or Xiaohongshu. Requires Chrome or Playwright Chromium.',
+    inputSchema: { ...source, ...style, out: z.string().describe('Output PNG path') },
+  }, async (a) => {
+    const r = await longExport(src(a), { out: resolve(a.out), theme: a.theme, codeTheme: a.codeTheme, primaryColor: a.primaryColor });
+    return text(JSON.stringify(r));
+  });
+
+  server.registerTool('md2_ai', {
+    title: 'AI copywriting',
+    description: 'Generate platform copy with the configured model (ANTHROPIC_API_KEY, or MD2_AI_BASE_URL/MD2_AI_API_KEY/MD2_AI_MODEL): xhs = 5 小红书 titles + caption + tags; thread = rewritten thread; wechat = 5 公众号 headlines + digest; cover = cover copy.',
+    inputSchema: {
+      ...source,
+      task: z.enum(['xhs', 'thread', 'wechat', 'cover']),
+      platform: z.enum(Object.keys(socialPlatforms) as [string, ...string[]]).optional(),
+    },
+  }, async (a) => text(JSON.stringify(await aiSuggest(src(a), a.task as AiTask, aiConfigFromEnv(), (a.platform as SocialPlatformId) ?? 'x'), null, 2)));
 
   server.registerTool('md2_xhs_cards', {
     title: 'Render Xiaohongshu image cards',
@@ -111,6 +136,7 @@ export async function startMcpServer(version: string) {
       themes: themes.map(({ id, name, description }) => ({ id, name, description })),
       codeThemes: codeThemes.map(({ id, name, dark }) => ({ id, name, dark })),
       xhsCardStyles, coverTemplates, coverSizes,
+      threadPlatforms: Object.values(socialPlatforms).map(({ id, name, limit }) => ({ id, name, limit })),
     }, null, 2)),
   );
 

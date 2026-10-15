@@ -2,38 +2,51 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
-  parseMarkdown, renderWechat, renderZhihu, renderXhs, renderX, renderCover,
+  parseMarkdown, renderWechat, renderZhihu, renderXhs, renderX, renderCover, renderLongImage, ensureEngines, getTheme,
+  aiXhsCopy, aiThread, aiWechatMeta, aiCoverCopy,
   type CoverOptions, type CoverSizeId, type CoverTemplateId, type WechatOptions, type XhsOptions, type XOptions,
-  type ZhihuOptions, type ParsedDoc,
+  type ZhihuOptions, type ParsedDoc, type DiagramResolver, type LongImageOptions, type AiConfig, type SocialPlatformId,
 } from '@md2/core';
-import { readInput, inlineLocalImages, loadImage, isRemote, localPath, type Input } from './io.js';
-import { renderXhsPngs, renderCoverPng } from './browser.js';
-import {
-  addDraft, credentialsFromEnv, getAccessToken, uploadContentImage, uploadMaterial, type Credentials,
-} from './wechat-api.js';
+import { readInput, inlineLocalImages, isRemote, type Input } from './io.js';
+import { publishWechatDraft, type PublishCoreOptions } from './publish.js';
+import { renderXhsPngs, renderCoverPng, renderDiagrams, renderHtmlPng } from './browser.js';
 
 export interface Source {
   file?: string;
   markdown?: string;
 }
 
-function load(src: Source): Input & { doc: ParsedDoc } {
+type Loaded = Input & { doc: ParsedDoc };
+
+/** Read + parse, and load the lazy engines (MathJax) the document needs. */
+async function load(src: Source): Promise<Loaded> {
   const input = readInput(src.file, src.markdown);
-  return { ...input, doc: parseMarkdown(input.markdown) };
+  const doc = parseMarkdown(input.markdown);
+  await ensureEngines(doc);
+  return { ...input, doc };
 }
 
-export function wechatHtml(src: Source, opts: WechatOptions = {}) {
-  const { doc } = load(src);
-  return renderWechat(doc, opts);
+/** Diagram resolver backed by headless Chromium; undefined when there are no diagrams. */
+async function diagramsFor(doc: ParsedDoc, theme?: string, accent?: string): Promise<DiagramResolver | undefined> {
+  if (!doc.diagrams.length) return undefined;
+  const t = getTheme(theme);
+  const map = await renderDiagrams(doc.diagrams, accent || t.primary, t.id === 'midnight');
+  return (_lang, code) => map.get(code);
 }
 
-export function zhihuHtml(src: Source, opts: ZhihuOptions = {}) {
-  const { doc } = load(src);
+export async function wechatHtml(src: Source, opts: WechatOptions = {}) {
+  const { doc } = await load(src);
+  const diagram = opts.diagram ?? (await diagramsFor(doc, opts.theme, opts.primaryColor));
+  return renderWechat(doc, { ...opts, diagram });
+}
+
+export async function zhihuHtml(src: Source, opts: ZhihuOptions = {}) {
+  const { doc } = await load(src);
   return renderZhihu(doc, opts);
 }
 
-export function xThread(src: Source, opts: XOptions = {}) {
-  const { doc } = load(src);
+export async function xThread(src: Source, opts: XOptions = {}) {
+  const { doc } = await load(src);
   return renderX(doc, opts);
 }
 
@@ -43,14 +56,16 @@ export interface XhsExportOptions extends XhsOptions {
 
 /** Render XHS image cards + caption.txt into outDir. */
 export async function xhsExport(src: Source, opts: XhsExportOptions) {
-  const { doc, baseDir } = load(src);
+  const { doc, baseDir } = await load(src);
   const fm = doc.frontmatter;
   const coverFm = (fm.xhs as Record<string, unknown> | undefined)?.cover as Partial<CoverOptions> | undefined;
   const resolveImage = inlineLocalImages(baseDir);
+  const diagram = await diagramsFor(doc, opts.theme, opts.primaryColor);
   const result = renderXhs(doc, {
     ...opts,
     cover: opts.cover === false ? false : { ...(typeof opts.cover === 'object' ? opts.cover : {}), ...coverFm },
     resolveImage,
+    diagram,
   });
   if (result.layout.cover) {
     // inline local background images for the cover as well
@@ -65,6 +80,19 @@ export async function xhsExport(src: Source, opts: XhsExportOptions) {
   return { files, caption, text: result.text, warnings: result.warnings };
 }
 
+export interface LongExportOptions extends LongImageOptions {
+  out: string;
+}
+
+/** Render the whole article as one tall PNG (长图). */
+export async function longExport(src: Source, opts: LongExportOptions) {
+  const { doc, baseDir } = await load(src);
+  const diagram = await diagramsFor(doc, opts.theme, opts.primaryColor);
+  const r = renderLongImage(doc, { ...opts, resolveImage: inlineLocalImages(baseDir), diagram });
+  await renderHtmlPng(r.html, r.width, opts.out);
+  return { file: opts.out, warnings: r.warnings };
+}
+
 export interface CoverExportOptions extends Partial<CoverOptions> {
   out: string;
   size?: CoverSizeId;
@@ -76,8 +104,9 @@ export async function coverExport(src: Source | null, opts: CoverExportOptions) 
   let baseDir = process.cwd();
   let defaults: Partial<CoverOptions> = {};
   if (src && (src.file || src.markdown !== undefined)) {
-    const { doc, baseDir: b } = load(src);
-    baseDir = b;
+    const input = readInput(src.file, src.markdown);
+    const doc = parseMarkdown(input.markdown);
+    baseDir = input.baseDir;
     const fm = doc.frontmatter;
     defaults = {
       title: doc.title,
@@ -94,73 +123,56 @@ export async function coverExport(src: Source | null, opts: CoverExportOptions) 
   return { file: opts.out, width: cover.width, height: cover.height };
 }
 
-export interface PublishOptions extends WechatOptions {
-  appId?: string;
-  appSecret?: string;
-  /** Cover image path/URL; default front matter `cover`, else first image, else generated */
-  cover?: string;
+export interface PublishOptions extends PublishCoreOptions {
   coverTemplate?: CoverTemplateId;
-  author?: string;
-  digest?: string;
-  sourceUrl?: string;
-  openComment?: boolean;
-  dryRun?: boolean;
-  onProgress?: (msg: string) => void;
 }
 
-/** Upload images + cover and create a WeChat draft. Returns the draft media_id. */
+/** Upload images + cover and create a WeChat draft (headless Chromium renders a missing cover / diagrams). */
 export async function publishWechat(src: Source, opts: PublishOptions = {}) {
-  const log = opts.onProgress ?? (() => {});
-  const { doc, baseDir } = load(src);
-  const fm = doc.frontmatter;
-  const wfm = (fm.wechat ?? {}) as Record<string, unknown>;
-  const creds: Credentials | null = opts.dryRun ? null : credentialsFromEnv(opts.appId, opts.appSecret);
-  const token = creds ? await getAccessToken(creds) : 'dry-run';
-  log('✓ access token');
-
-  // 1. upload every image in the article
-  const uploaded = new Map<string, string>();
-  for (const imgSrc of doc.images) {
-    if (uploaded.has(imgSrc) || /mmbiz\.qpic\.cn/.test(imgSrc)) continue;
-    const img = await loadImage(imgSrc, baseDir);
-    const url = opts.dryRun ? `https://mmbiz.qpic.cn/dry-run/${uploaded.size}` : await uploadContentImage(token, img.data, img.name, img.mime);
-    uploaded.set(imgSrc, url);
-    log(`✓ image ${imgSrc}`);
-  }
-
-  // 2. render content with uploaded URLs, without the H1 (WeChat has a title field)
-  const { html, warnings } = renderWechat(doc, {
+  return publishWechatDraft(src, {
     ...opts,
-    removeTitle: opts.removeTitle ?? true,
-    resolveImage: (s) => uploaded.get(s),
+    generateCover: async () => {
+      const out = join(tmpdir(), `md2-cover-${Date.now()}.png`);
+      await coverExport(src, { out, size: 'wechat', template: opts.coverTemplate ?? 'aurora' });
+      return { data: readFileSync(out), name: 'cover.png', mime: 'image/png' };
+    },
+    generateDiagrams: async (diagrams) => {
+      const t = getTheme(opts.theme);
+      const map = await renderDiagrams(diagrams, opts.primaryColor || t.primary, t.id === 'midnight');
+      return (_lang, code) => map.get(code);
+    },
   });
+}
 
-  // 3. cover
-  const coverSrc = opts.cover ?? (wfm.cover as string) ?? (fm.cover as string) ?? doc.images[0];
-  let coverFile: { data: Buffer; name: string; mime: string };
-  if (coverSrc && (isRemote(coverSrc) || localPath(coverSrc, baseDir))) {
-    coverFile = await loadImage(coverSrc, baseDir);
-  } else {
-    const out = join(tmpdir(), `md2-cover-${Date.now()}.png`);
-    await coverExport(src, { out, size: 'wechat', template: opts.coverTemplate ?? 'aurora' });
-    coverFile = { data: readFileSync(out), name: 'cover.png', mime: 'image/png' };
-    log('✓ generated cover');
+// ───────────── AI ─────────────
+
+/**
+ * AI provider from env: ANTHROPIC_API_KEY (Claude, default) or
+ * MD2_AI_BASE_URL + MD2_AI_API_KEY + MD2_AI_MODEL for an OpenAI-compatible endpoint.
+ */
+export function aiConfigFromEnv(over: Partial<AiConfig> = {}): AiConfig {
+  const env = process.env;
+  if (over.provider === 'openai' || (!over.provider && env.MD2_AI_BASE_URL)) {
+    return {
+      provider: 'openai',
+      baseURL: over.baseURL ?? env.MD2_AI_BASE_URL,
+      apiKey: over.apiKey ?? env.MD2_AI_API_KEY ?? '',
+      model: over.model ?? env.MD2_AI_MODEL ?? '',
+    };
   }
-  const thumb = opts.dryRun ? { mediaId: 'dry-run' } : await uploadMaterial(token, coverFile.data, coverFile.name, coverFile.mime);
-  log('✓ cover uploaded');
+  const key = over.apiKey ?? env.ANTHROPIC_API_KEY ?? env.MD2_AI_API_KEY;
+  if (!key) throw new Error('Set ANTHROPIC_API_KEY (or MD2_AI_BASE_URL + MD2_AI_API_KEY for OpenAI-compatible providers)');
+  return { provider: 'anthropic', apiKey: key, model: over.model ?? env.MD2_AI_MODEL, baseURL: over.baseURL ?? env.ANTHROPIC_BASE_URL };
+}
 
-  const title = String(wfm.title ?? doc.title ?? 'Untitled').slice(0, 64);
-  const article = {
-    title,
-    author: (opts.author ?? (fm.author as string) ?? '').slice(0, 16) || undefined,
-    digest: (opts.digest ?? (wfm.digest as string) ?? doc.summary).slice(0, 120),
-    content: html,
-    content_source_url: opts.sourceUrl ?? (fm.source as string) ?? undefined,
-    thumb_media_id: thumb.mediaId,
-    need_open_comment: (opts.openComment ? 1 : 0) as 0 | 1,
-  };
-  if (opts.dryRun) return { mediaId: 'dry-run', article, warnings };
-  const mediaId = await addDraft(token, article);
-  log('✓ draft created');
-  return { mediaId, article, warnings };
+export type AiTask = 'xhs' | 'thread' | 'wechat' | 'cover';
+
+export async function aiSuggest(src: Source, task: AiTask, cfg: AiConfig, platform: SocialPlatformId = 'x') {
+  const { doc } = await load(src);
+  switch (task) {
+    case 'xhs': return aiXhsCopy(cfg, doc);
+    case 'thread': return aiThread(cfg, doc, platform);
+    case 'wechat': return aiWechatMeta(cfg, doc);
+    case 'cover': return aiCoverCopy(cfg, doc);
+  }
 }

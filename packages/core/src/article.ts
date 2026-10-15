@@ -7,7 +7,8 @@ import {
   cloneTree, codeBlocks, decorateHeadings, extractFootnotes, figureImages, hasClass, highlightBlocks,
   linksToFootnotes, raw, removeFirstH1, rewriteImages, taskListGlyphs, transformMath, wrapTables,
 } from './transforms.js';
-import type { ParsedDoc, RenderWarning } from './types.js';
+import type { DiagramResolver, ParsedDoc, RenderWarning } from './types.js';
+import { DIAGRAM_LANGS } from './parse.js';
 
 export interface ArticleOptions {
   theme?: string;
@@ -22,6 +23,8 @@ export interface ArticleOptions {
   referencesTitle?: string;
   /** Convert code whitespace to NBSP/<br> (needed by WeChat's editor) */
   protectCodeWhitespace?: boolean;
+  /** Render ```mermaid (and other diagram) blocks to inline SVG */
+  diagram?: DiagramResolver;
 }
 
 const MAC_DOTS =
@@ -65,6 +68,15 @@ export function prepareArticle(doc: ParsedDoc, opts: ArticleOptions = {}): { roo
       ? (h('section.math-block', [raw(texToSvg(tex, true))]) as Element)
       : (h('span.math-inline', [raw(texToSvg(tex, false))]) as Element),
   );
+
+  if (opts.diagram) {
+    for (const b of codeBlocks(tree)) {
+      if (!DIAGRAM_LANGS.has(b.lang)) continue;
+      const svg = opts.diagram(b.lang, b.text);
+      if (!svg) continue;
+      Object.assign(b.pre, h('section.diagram', { dataLang: b.lang }, [raw(svg)]));
+    }
+  }
 
   highlightBlocks(tree);
   for (const b of codeBlocks(tree)) {

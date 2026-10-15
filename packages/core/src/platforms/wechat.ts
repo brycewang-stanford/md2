@@ -6,7 +6,7 @@ import { inlineCss } from '../inline-css.js';
 import { prepareArticle } from '../article.js';
 import { getTheme, themeCss, themeVars, type StyleOptions } from '../themes/index.js';
 import { hasClass } from '../transforms.js';
-import type { ParsedDoc, RenderWarning } from '../types.js';
+import type { DiagramResolver, ParsedDoc, RenderWarning } from '../types.js';
 
 export interface WechatOptions extends StyleOptions {
   /** Convert external links into numbered references (WeChat blocks outside links). Default true */
@@ -21,6 +21,8 @@ export interface WechatOptions extends StyleOptions {
   resolveImage?: (src: string) => string | undefined;
   /** Title of the reference section. Default 参考资料 */
   referencesTitle?: string;
+  /** Render ```mermaid blocks to inline SVG (see `renderMermaidSvg` in @md2/core/dom) */
+  diagram?: DiagramResolver;
 }
 
 export interface WechatResult {
@@ -45,6 +47,7 @@ export function renderWechat(input: string | ParsedDoc, opts: WechatOptions = {}
     resolveImage: opts.resolveImage,
     referencesTitle: opts.referencesTitle,
     protectCodeWhitespace: true,
+    diagram: opts.diagram,
   });
   root.properties.dataTool = 'md2';
   const tree: Root = { type: 'root', children: [root] };

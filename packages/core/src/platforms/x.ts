@@ -5,9 +5,31 @@ import { parseMarkdown } from '../parse.js';
 import { cloneTree, extractFootnotes, transformMath } from '../transforms.js';
 import type { ParsedDoc, RenderWarning } from '../types.js';
 
+export type SocialPlatformId = 'x' | 'threads' | 'bluesky' | 'mastodon' | 'linkedin';
+
+export interface SocialPlatform {
+  id: SocialPlatformId;
+  name: string;
+  /** Default max length per post */
+  limit: number;
+  /** How the platform counts characters */
+  count: (text: string) => number;
+  maxImages: number;
+  numbering: boolean;
+  boldHeadings: boolean;
+  /** One long post rather than a thread (headings don't start new posts) */
+  single?: boolean;
+  /** Compose URL taking `text` (first post) */
+  intent?: (text: string) => string;
+}
+
 export interface XOptions {
-  /** Max weighted length per post. 280 for standard accounts; Premium allows 25 000. */
+  /** Target platform; sets the length rules and defaults. Default 'x' */
+  platform?: SocialPlatformId;
+  /** Max length per post (platform default; X Premium allows 25 000). */
   limit?: number;
+  /** Render headings in Unicode bold (𝗹𝗶𝗸𝗲 𝘁𝗵𝗶𝘀). Default: on for LinkedIn and Latin-script headings */
+  boldHeadings?: boolean;
   /** Append ` 1/n` counters. Default true */
   numbering?: boolean;
   /** Put the title as the first post (with 🧵). Default true */
@@ -20,13 +42,14 @@ export interface XOptions {
 
 export interface Tweet {
   text: string;
-  /** Weighted length as counted by X (CJK = 2, URL = 23) */
+  /** Length as the platform counts it (X: CJK = 2, URL = 23) */
   length: number;
   images: string[];
 }
 
 export interface XResult {
   tweets: Tweet[];
+  platform: SocialPlatformId;
   doc: ParsedDoc;
   warnings: RenderWarning[];
 }
@@ -56,11 +79,53 @@ export function tweetLength(text: string): number {
   return len;
 }
 
-function toBlocks(tree: Root, opts: XOptions): Block[] {
+const graphemes = (s: string): number => {
+  const Seg = (Intl as unknown as { Segmenter?: new (l?: string, o?: object) => { segment(s: string): Iterable<unknown> } }).Segmenter;
+  if (!Seg) return Array.from(s).length;
+  let n = 0;
+  for (const _ of new Seg(undefined, { granularity: 'grapheme' }).segment(s)) n++;
+  return n;
+};
+const codePoints = (s: string) => Array.from(s).length;
+/** Mastodon counts every URL as 23 characters. */
+const mastodonLength = (s: string) => codePoints(s.replace(URL_RE, 'x'.repeat(23)));
+
+export const socialPlatforms: Record<SocialPlatformId, SocialPlatform> = {
+  x: { id: 'x', name: 'X', limit: 280, count: tweetLength, maxImages: 4, numbering: true, boldHeadings: false, intent: (t) => `https://x.com/intent/post?text=${encodeURIComponent(t)}` },
+  threads: { id: 'threads', name: 'Threads', limit: 500, count: codePoints, maxImages: 10, numbering: true, boldHeadings: false, intent: (t) => `https://www.threads.net/intent/post?text=${encodeURIComponent(t)}` },
+  bluesky: { id: 'bluesky', name: 'Bluesky', limit: 300, count: graphemes, maxImages: 4, numbering: true, boldHeadings: false, intent: (t) => `https://bsky.app/intent/compose?text=${encodeURIComponent(t)}` },
+  mastodon: { id: 'mastodon', name: 'Mastodon', limit: 500, count: mastodonLength, maxImages: 4, numbering: true, boldHeadings: false },
+  linkedin: { id: 'linkedin', name: 'LinkedIn', limit: 3000, count: codePoints, maxImages: 9, numbering: false, boldHeadings: true, single: true, intent: (t) => `https://www.linkedin.com/feed/?shareActive=true&text=${encodeURIComponent(t)}` },
+};
+
+const BOLD: [number, number, number][] = [
+  [0x41, 0x5a, 0x1d5d4], // A-Z
+  [0x61, 0x7a, 0x1d5ee], // a-z
+  [0x30, 0x39, 0x1d7ec], // 0-9
+];
+/** Latin letters and digits → Mathematical Sans-Serif Bold (other scripts unchanged). */
+export function toUnicodeBold(s: string): string {
+  return Array.from(s)
+    .map((ch) => {
+      const cp = ch.codePointAt(0)!;
+      for (const [a, b, base] of BOLD) if (cp >= a && cp <= b) return String.fromCodePoint(base + cp - a);
+      return ch;
+    })
+    .join('');
+}
+
+const CJK = /[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/;
+
+function toBlocks(tree: Root, opts: XOptions, bold: boolean | undefined): Block[] {
   return toPlainBlocks(tree, { keepUrls: true }).map((b) => {
     switch (b.kind) {
-      case 'heading':
-        return { text: `【${b.text}】`, images: [], heading: true };
+      case 'heading': {
+        const cjk = CJK.test(b.text);
+        const useBold = bold ?? !cjk;
+        // Unicode bold has no CJK forms, so CJK headings get a visible marker too
+        const text = useBold ? (cjk ? `▍${toUnicodeBold(b.text)}` : toUnicodeBold(b.text)) : `【${b.text}】`;
+        return { text, images: [], heading: true, raw: b.text };
+      }
       case 'list':
         return {
           text: b.items!.map((i) => '  '.repeat(i.depth) + (i.ordered ? `${i.n}. ` : i.depth ? '◦ ' : '• ') + i.text).join('\n'),
@@ -80,10 +145,11 @@ interface Block {
   text: string;
   images: string[];
   heading?: boolean;
+  raw?: string;
 }
 
 /** Split text that is too long into sentence-sized pieces that fit `limit`. */
-function splitLong(text: string, limit: number): string[] {
+function splitLong(text: string, limit: number, tweetLength: (s: string) => number): string[] {
   if (tweetLength(text) <= limit) return [text];
   const sentences = text.match(/[^。！？!?；;.\n]+[。！？!?；;.\n]*\s*/g) ?? [text];
   const out: string[] = [];
@@ -113,11 +179,14 @@ function splitLong(text: string, limit: number): string[] {
   return out;
 }
 
-/** Convert an article into an X/Twitter thread. */
+/** Convert an article into a thread for X, Threads, Bluesky, Mastodon or a LinkedIn post. */
 export function renderX(input: string | ParsedDoc, opts: XOptions = {}): XResult {
   const doc = typeof input === 'string' ? parseMarkdown(input) : input;
-  const limit = opts.limit ?? 280;
-  const numbering = opts.numbering !== false;
+  const platform = socialPlatforms[opts.platform ?? 'x'];
+  const tweetLength = platform.count;
+  const limit = opts.limit ?? platform.limit;
+  const numbering = opts.numbering ?? platform.numbering;
+  const maxImages = platform.maxImages;
   const reserve = numbering ? 8 : 0; // " 12/34"
   const warnings: RenderWarning[] = [];
   const tree: Root = cloneTree(doc.hast);
@@ -126,38 +195,42 @@ export function renderX(input: string | ParsedDoc, opts: XOptions = {}): XResult
   );
   const notes = extractFootnotes(tree);
 
-  const blocks = toBlocks(tree, opts);
+  const blocks = toBlocks(tree, opts, opts.boldHeadings ?? (platform.boldHeadings || undefined));
   // Drop the H1 if it equals the title, it becomes the hook post
   if (opts.titleFirst !== false && doc.title) {
-    const i = blocks.findIndex((b) => b.heading && b.text === `【${doc.title}】`);
+    const i = blocks.findIndex((b) => b.heading && b.raw === doc.title);
     if (i >= 0) blocks.splice(i, 1);
   }
   if (notes.length) blocks.push({ text: notes.map((n) => `[${n.n}] ${n.text}`).join('\n'), images: [] });
 
   const max = limit - reserve;
   const posts: { text: string; images: string[] }[] = [];
-  if (opts.titleFirst !== false && doc.title) {
+  let cur: { text: string; images: string[] } | null = null;
+  if (opts.titleFirst !== false && doc.title && platform.single) {
+    cur = { text: platform.boldHeadings ? toUnicodeBold(doc.title) : doc.title, images: [] };
+  } else if (opts.titleFirst !== false && doc.title) {
     const withSummary = !!doc.summary && tweetLength(`${doc.title}\n\n${doc.summary}`) <= max - 4;
-    posts.push({ text: `${withSummary ? `${doc.title}\n\n${doc.summary}` : doc.title} 🧵`, images: [] });
+    const title = platform.boldHeadings ? toUnicodeBold(doc.title) : doc.title;
+    const thread = platform.id === 'linkedin' ? '' : ' 🧵';
+    posts.push({ text: `${withSummary ? `${title}\n\n${doc.summary}` : title}${thread}`, images: [] });
     // Don't repeat the intro paragraph the hook already quotes
     if (withSummary) {
       const i = blocks.findIndex((b) => !b.heading && b.text.trim());
       if (i >= 0 && blocks[i].text.trim() === doc.summary.trim() && !blocks[i].images.length) blocks.splice(i, 1);
     }
   }
-  let cur: { text: string; images: string[] } | null = null;
   const flush = () => {
     if (cur && (cur.text.trim() || cur.images.length)) posts.push({ text: cur.text.trim(), images: cur.images });
     cur = null;
   };
   for (const b of blocks) {
-    const pieces = splitLong(b.text, max);
+    const pieces = splitLong(b.text, max, tweetLength);
     pieces.forEach((piece, pi) => {
       const images = pi === pieces.length - 1 ? b.images : [];
       // Headings start a new post
-      if (b.heading) flush();
+      if (b.heading && !platform.single) flush();
       const joined = cur ? `${cur.text}\n\n${piece}` : piece;
-      if (cur && tweetLength(joined) <= max && cur.images.length + images.length <= 4) {
+      if (cur && tweetLength(joined) <= max && cur.images.length + images.length <= maxImages) {
         cur.text = joined;
         cur.images.push(...images);
       } else {
@@ -175,11 +248,11 @@ export function renderX(input: string | ParsedDoc, opts: XOptions = {}): XResult
     else posts.push({ text: tags, images: [] });
   }
 
-  // Images beyond 4 per post overflow into image-only posts
+  // Images beyond the per-post limit overflow into image-only posts
   const final: { text: string; images: string[] }[] = [];
   for (const p of posts) {
-    final.push({ text: p.text, images: p.images.slice(0, 4) });
-    for (let i = 4; i < p.images.length; i += 4) final.push({ text: '', images: p.images.slice(i, i + 4) });
+    final.push({ text: p.text, images: p.images.slice(0, maxImages) });
+    for (let i = maxImages; i < p.images.length; i += maxImages) final.push({ text: '', images: p.images.slice(i, i + maxImages) });
   }
 
   const n = final.length;
@@ -193,5 +266,7 @@ export function renderX(input: string | ParsedDoc, opts: XOptions = {}): XResult
       if (!/^https?:|^data:/.test(src)) warnings.push({ code: 'local-image', message: `Attach manually: ${src}` });
     }
   }
-  return { tweets, doc, warnings };
+  return { tweets, doc, warnings, platform: platform.id };
 }
+
+export const renderThread = renderX;

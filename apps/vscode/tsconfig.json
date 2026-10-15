@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "ESNext",
+    "noEmit": true,
+    "declaration": false,
+    "types": ["node", "vscode"],
+    "lib": ["ES2022", "DOM"],
+    "paths": { "@md2/core": ["../../packages/core/src/index.ts"] }
+  },
+  "include": ["src", "test"]
+}

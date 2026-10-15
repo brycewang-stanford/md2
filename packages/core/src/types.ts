@@ -30,7 +30,14 @@ export interface ParsedDoc {
   tags: string[];
   /** Image URLs in document order */
   images: string[];
+  /** True when the document contains TeX math (call `preloadMath()` first) */
+  hasMath: boolean;
+  /** Fenced diagram blocks (```mermaid) in document order */
+  diagrams: { lang: string; code: string }[];
 }
+
+/** Resolve a diagram code block to a standalone SVG string (or undefined to keep it as code). */
+export type DiagramResolver = (lang: string, code: string) => string | undefined;
 
 export interface RenderWarning {
   code: string;

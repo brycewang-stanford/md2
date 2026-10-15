@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { renderCover, coverTemplates, coverSizes, type CoverSizeId, type CoverTemplateId, type CoverOptions } from '@md2/core';
+import { renderCover, coverTemplates, coverSizes, type CoverSizeId, type CoverTemplateId, type CoverOptions, type CoverSuggestion } from '@md2/core';
 import { mountCover } from '@md2/core/dom';
 import { Button, ColorField, Field, toast } from '../components/ui';
-import { download } from '../lib/clipboard';
+import { AiButton } from '../components/ai';
+import { host } from '../lib/host';
 import { elementToPng, readFileAsDataUrl, zipPngs } from '../lib/image';
 import { usePersistent } from '../lib/store';
+import { t } from '../lib/i18n';
+import { usePrimaryAction } from '../lib/actions';
 import type { PanelProps } from './types';
 
 interface Fields {
@@ -53,7 +56,7 @@ export function CoverPanel({ doc }: PanelProps) {
 
   const opts = useMemo<CoverOptions>(
     () => ({
-      title: fields.title || '未命名标题',
+      title: fields.title || t('未命名标题', 'Untitled'),
       subtitle: fields.subtitle || undefined,
       author: fields.author || undefined,
       badge: fields.badge || undefined,
@@ -76,29 +79,31 @@ export function CoverPanel({ doc }: PanelProps) {
   const exportOne = async () => {
     if (!main) return;
     try {
-      download(`cover-${size}-${tpl}.png`, await elementToPng(main));
-      toast(`已导出 ${sz.width}×${sz.height}`);
+      await host.save(`cover-${size}-${tpl}.png`, await elementToPng(main));
+      toast(t(`已导出 ${sz.width}×${sz.height}`, `Exported ${sz.width}×${sz.height}`));
     } catch {
-      toast('导出失败', 'err');
+      toast(t('导出失败', 'Export failed'), 'err');
     }
   };
+  usePrimaryAction(exportOne);
 
   const exportAllSizes = async () => {
-    const host = document.createElement('div');
-    host.className = 'offscreen';
-    document.body.appendChild(host);
+    const box = document.createElement('div');
+    box.className = 'offscreen';
+    document.body.appendChild(box);
     try {
       const files = [];
       for (const id of Object.keys(coverSizes) as CoverSizeId[]) {
-        const el = mountCover(host, renderCover({ ...opts, size: id }));
+        const el = mountCover(box, renderCover({ ...opts, size: id }));
         files.push({ name: `cover-${id}.png`, blob: await elementToPng(el) });
       }
-      download(`${doc.title || 'md2'}-covers.zip`, await zipPngs(files));
-      toast(`已导出 ${files.length} 个尺寸`);
+      if (host.kind === 'vscode') for (const f of files) await host.save(`covers/${f.name}`, f.blob);
+      else await host.save(`${doc.title || 'md2'}-covers.zip`, await zipPngs(files));
+      toast(t(`已导出 ${files.length} 个尺寸`, `Exported ${files.length} sizes`));
     } catch {
-      toast('导出失败', 'err');
+      toast(t('导出失败', 'Export failed'), 'err');
     } finally {
-      host.remove();
+      box.remove();
     }
   };
 
@@ -115,11 +120,16 @@ export function CoverPanel({ doc }: PanelProps) {
           </div>
         </div>
         <div className="panel-actions">
+          <AiButton<CoverSuggestion>
+            task="cover"
+            label={t('AI 文案', 'AI copy')}
+            onResult={(r) => setOverrides({ ...overrides, title: r.title.replace(/\\n/g, '\n'), subtitle: r.subtitle, badge: r.badge, emoji: r.emoji })}
+          />
           <Button icon="download" variant="soft" onClick={exportAllSizes}>
-            全部尺寸
+            {t('全部尺寸', 'All sizes')}
           </Button>
           <Button variant="primary" icon="download" onClick={exportOne}>
-            导出 PNG
+            {t('导出 PNG', 'Export PNG')}
           </Button>
         </div>
       </div>
@@ -136,29 +146,29 @@ export function CoverPanel({ doc }: PanelProps) {
           </div>
         </div>
         <aside className="cover-form">
-          <Field label="标题（换行用回车，==重点== 高亮）">
+          <Field label={t('标题（换行用回车，==重点== 高亮）', 'Title (Enter = line break, ==x== = highlight)')}>
             <textarea className="input" rows={3} value={fields.title} onChange={set('title')} />
           </Field>
-          <Field label="副标题">
+          <Field label={t('副标题', 'Subtitle')}>
             <input className="input" value={fields.subtitle} onChange={set('subtitle')} />
           </Field>
           <div className="form-row">
-            <Field label="角标">
-              <input className="input" placeholder="干货 / NEW" value={fields.badge} onChange={set('badge')} />
+            <Field label={t('角标', 'Badge')}>
+              <input className="input" placeholder={t('干货 / NEW', 'NEW / GUIDE')} value={fields.badge} onChange={set('badge')} />
             </Field>
             <Field label="Emoji">
               <input className="input" placeholder="🚀" value={fields.emoji} onChange={set('emoji')} />
             </Field>
           </div>
-          <Field label="作者">
+          <Field label={t('作者', 'Author')}>
             <input className="input" value={fields.author} onChange={set('author')} />
           </Field>
-          <Field label="标签（逗号分隔）">
+          <Field label={t('标签（逗号分隔）', 'Tags (comma separated)')}>
             <input className="input" value={fields.tags} onChange={set('tags')} />
           </Field>
           <div className="form-row">
-            <ColorField label="强调色" value={accent} fallback={tplAccent} onChange={setAccent} />
-            <Field label="背景图">
+            <ColorField label={t('强调色', 'Accent')} value={accent} fallback={tplAccent} onChange={setAccent} />
+            <Field label={t('背景图', 'Background')}>
               <span className="file-btn">
                 <input
                   type="file"
@@ -168,17 +178,17 @@ export function CoverPanel({ doc }: PanelProps) {
                     if (f) setBg(await readFileAsDataUrl(f));
                   }}
                 />
-                {bg ? '更换' : '上传'}
+                {bg ? t('更换', 'Change') : t('上传', 'Upload')}
               </span>
               {bg && (
                 <button type="button" className="link-btn" onClick={() => setBg('')}>
-                  移除
+                  {t('移除', 'Remove')}
                 </button>
               )}
             </Field>
           </div>
           <button type="button" className="link-btn" onClick={() => setOverrides({})}>
-            重置为文章信息
+            {t('重置为文章信息', 'Reset to article info')}
           </button>
         </aside>
       </div>

@@ -23,13 +23,15 @@ describe('io', () => {
 });
 
 describe('actions', () => {
-  test('wechat html from file', () => {
-    const r = wechatHtml({ file: post }, { theme: 'linear' });
+  test('wechat html from file (math engine loads lazily)', async () => {
+    const r = await wechatHtml({ file: post }, { theme: 'linear' });
+    expect(r.html).toContain('<svg');
     expect(r.html).toContain('#5e6ad2');
     expect(r.warnings[0].code).toBe('local-image');
   });
-  test('x thread from markdown string', () => {
-    expect(xThread({ markdown: '# T\n\nhello world' }).tweets.length).toBeGreaterThan(0);
+  test('thread from markdown string', async () => {
+    expect((await xThread({ markdown: '# T\n\nhello world' })).tweets.length).toBeGreaterThan(0);
+    expect((await xThread({ markdown: 'hello', }, { platform: 'bluesky' })).platform).toBe('bluesky');
   });
 });
 

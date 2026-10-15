@@ -11,6 +11,7 @@ import { toText } from 'hast-util-to-text';
 import type { Root as MdRoot, Blockquote, Paragraph } from 'mdast';
 import type { Root, Element } from 'hast';
 import type { FrontMatter, ParsedDoc } from './types.js';
+import { preloadMath } from './math.js';
 
 const ALERT_RE = /^\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*/i;
 
@@ -48,6 +49,9 @@ function remarkCallouts() {
     });
   };
 }
+
+/** Fenced-code languages treated as diagrams */
+export const DIAGRAM_LANGS = new Set(['mermaid']);
 
 export const CALLOUT_TITLES: Record<string, string> = {
   note: 'ℹ️ 说明',
@@ -95,8 +99,17 @@ export function parseMarkdown(markdown: string): ParsedDoc {
 
   let firstH1 = '';
   let summary = '';
+  let hasMath = false;
   const images: string[] = [];
+  const diagrams: ParsedDoc['diagrams'] = [];
   visit(hast, 'element', (el: Element) => {
+    if (el.tagName === 'code') {
+      const cls: unknown = el.properties?.className;
+      const list = Array.isArray(cls) ? cls.map(String) : [];
+      if (list.some((c) => c === 'math-inline' || c === 'math-display' || c === 'language-math')) hasMath = true;
+      const lang = list.find((c) => c.startsWith('language-'))?.slice(9);
+      if (lang && DIAGRAM_LANGS.has(lang)) diagrams.push({ lang, code: toText(el, { whitespace: 'pre' }).replace(/\n$/, '') });
+    }
     if (!firstH1 && el.tagName === 'h1') firstH1 = toText(el).trim();
     if (!summary && el.tagName === 'p') {
       const text = toText(el).trim();
@@ -114,5 +127,12 @@ export function parseMarkdown(markdown: string): ParsedDoc {
     summary: String(frontmatter.description ?? frontmatter.digest ?? summary),
     tags: normalizeTags(frontmatter.tags),
     images,
+    hasMath,
+    diagrams,
   };
+}
+
+/** Load lazy engines a document needs (MathJax) before synchronous rendering. */
+export async function ensureEngines(doc: ParsedDoc): Promise<void> {
+  if (doc.hasMath) await preloadMath();
 }

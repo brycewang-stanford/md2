@@ -48,8 +48,15 @@ export async function saveAsset(dataUrl: string): Promise<string> {
   return id;
 }
 
-/** `resolveImage` for renderers: `asset:id` → data URL. */
+let hostImages: Record<string, string> = {};
+
+/** Local-path → URL map supplied by the host (VS Code resolves relative images to webview URIs). */
+export function setHostImages(map: Record<string, string>) {
+  hostImages = map;
+}
+
+/** `resolveImage` for renderers: `asset:id` → data URL, host-mapped local paths → URLs. */
 export function resolveAsset(src: string): string | undefined {
-  if (!src.startsWith('asset:')) return undefined;
-  return cache.get(src.slice(6));
+  if (src.startsWith('asset:')) return cache.get(src.slice(6));
+  return hostImages[src];
 }

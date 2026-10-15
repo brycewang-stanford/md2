@@ -46,6 +46,19 @@ print([fib(i) for i in range(10)])
 
 行内代码比如 `npm i -g md2all` 也有样式。
 
+## 流程图
+
+Mermaid 图会被渲染成内联 SVG（样式全部内联，粘到公众号也不会丢）：
+
+```mermaid
+flowchart LR
+  A[Markdown] --> B(md2 引擎)
+  B --> C[公众号]
+  B --> D[知乎]
+  B --> E[小红书卡片]
+  B --> F[X / Threads]
+```
+
 ## 表格
 
 | 平台 | 输出 | 关键处理 |

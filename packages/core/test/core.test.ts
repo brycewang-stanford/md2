@@ -1,13 +1,20 @@
-import { describe, expect, test } from 'vitest';
+import { beforeAll, describe, expect, test, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
   parseMarkdown, renderWechat, renderZhihu, renderX, renderXhs, renderXhsText, renderCover,
   tweetLength, inlineCss, specificity, themes, codeThemes, coverTemplates, coverSizes,
+  preloadMath, renderLongImage, toUnicodeBold, socialPlatforms, aiXhsCopy, aiThread, articleText, AiError,
+  texToSvg,
 } from '../src/index.js';
 import { fromHtml } from 'hast-util-from-html';
 import { toHtml } from 'hast-util-to-html';
 
 const demo = readFileSync(new URL('../../../examples/demo.md', import.meta.url), 'utf8');
+
+await preloadMath();
+beforeAll(async () => {
+  await preloadMath();
+});
 
 describe('parse', () => {
   test('front matter, title, tags, summary', () => {
@@ -176,5 +183,96 @@ describe('cover', () => {
   });
   test('wide sizes use wide layout', () => {
     expect(renderCover({ title: 'x', size: 'wechat' }).html).toContain('cv-wide');
+  });
+});
+
+describe('v0.2 engine', () => {
+  test('parse flags math and diagrams', () => {
+    const d = parseMarkdown('$x$\n\n```mermaid\ngraph TD; A-->B\n```');
+    expect(d.hasMath).toBe(true);
+    expect(d.diagrams).toEqual([{ lang: 'mermaid', code: 'graph TD; A-->B' }]);
+    expect(parseMarkdown('plain').hasMath).toBe(false);
+  });
+  test('diagram resolver swaps the code block for SVG', () => {
+    const md = '```mermaid\ngraph TD; A-->B\n```';
+    const html = renderWechat(md, { diagram: () => '<svg id="d"></svg>' }).html;
+    expect(html).toContain('<svg id="d"></svg>');
+    expect(html).not.toContain('graph TD');
+    expect(renderWechat(md).html).toContain('graph');
+  });
+  test('tuning options', () => {
+    const html = renderWechat('para one\n\n> quote', { textIndent: true, justify: true, paragraphSpacing: 2, letterSpacing: 0.1 }).html;
+    expect(html).toMatch(/<p style="[^"]*text-indent: 2em/);
+    expect(html).toMatch(/<section[^>]*text-align: justify/);
+    expect(html).toMatch(/margin-bottom: 2em/);
+    expect(html).not.toMatch(/<blockquote[^>]*>\s*<p style="[^"]*text-indent/);
+  });
+  test('long image wraps the article with header and footer', () => {
+    const r = renderLongImage(demo, { theme: 'linear' });
+    expect(r.html).toContain('class="md2-long"');
+    expect(r.html).toContain('一篇 Markdown，发遍公众号');
+    expect(r.html).toContain('>md2</footer>');
+    expect(r.html).not.toMatch(/font-family:[^;"]*"[^>]*<h1/);
+    expect(r.width).toBe(540);
+  });
+  test('unicode bold', () => {
+    expect(toUnicodeBold('Hi 9 你好')).toBe('𝗛𝗶 𝟵 你好');
+  });
+  test('each social platform respects its limit', () => {
+    for (const id of Object.keys(socialPlatforms) as (keyof typeof socialPlatforms)[]) {
+      const p = socialPlatforms[id];
+      const r = renderX(demo, { platform: id });
+      expect(r.platform).toBe(id);
+      for (const t of r.tweets) expect(p.count(t.text)).toBeLessThanOrEqual(p.limit);
+    }
+    expect(renderX(demo, { platform: 'linkedin' }).tweets.length).toBe(1);
+    expect(renderX('# Title\n\n## Section\n\ntext', { platform: 'linkedin' }).tweets[0].text).toContain('𝗦𝗲𝗰𝘁𝗶𝗼𝗻');
+  });
+  test('math falls back to TeX code before the engine loads', () => {
+    expect(texToSvg('x', false)).toContain('<svg');
+  });
+});
+
+describe('ai', () => {
+  test('articleText is compact and keeps headings', () => {
+    const t = articleText(demo);
+    expect(t).toContain('## 为什么需要它');
+    expect(t).not.toMatch(/<(section|p|h2|svg)\b/);
+  });
+  test('openai-compatible provider parses JSON (with fenced output and retry without response_format)', async () => {
+    const calls: unknown[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(String(init.body));
+      calls.push(body);
+      if (body.response_format) return new Response('bad', { status: 400 });
+      return new Response(JSON.stringify({ choices: [{ message: { content: '```json\n{"titles":["a"],"body":"b","tags":["t"]}\n```' } }] }));
+    }));
+    const r = await aiXhsCopy({ provider: 'openai', apiKey: 'k', baseURL: 'https://api.example.com/v1/', model: 'm' }, demo);
+    expect(r).toEqual({ titles: ['a'], body: 'b', tags: ['t'] });
+    expect(calls.length).toBe(2);
+    vi.unstubAllGlobals();
+  });
+  test('anthropic provider sends structured output + fallbacks via the SDK', async () => {
+    let seen: { url: string; headers: Headers; body: Record<string, unknown> } | null = null;
+    vi.stubGlobal('fetch', vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      const req = url instanceof Request ? url : new Request(String(url), init);
+      seen = { url: req.url, headers: req.headers, body: JSON.parse(await req.text()) };
+      return new Response(JSON.stringify({
+        id: 'msg_1', type: 'message', role: 'assistant', model: 'claude-opus-5-5', stop_reason: 'end_turn', stop_sequence: null,
+        content: [{ type: 'text', text: '{"posts":["hello","world"]}' }],
+        usage: { input_tokens: 1, output_tokens: 1 },
+      }), { headers: { 'content-type': 'application/json' } });
+    }));
+    const r = await aiThread({ provider: 'anthropic', apiKey: 'sk-test' }, demo, 'x');
+    expect(r.posts).toEqual(['hello', 'world']);
+    expect(seen!.url).toContain('/v1/messages');
+    expect(seen!.body.model).toBe('claude-opus-5-5');
+    expect(seen!.body.fallbacks).toBe('default');
+    expect((seen!.body.output_config as { format: { type: string } }).format.type).toBe('json_schema');
+    expect(seen!.headers.get('anthropic-beta')).toContain('server-side-fallback-2026-07-01');
+    vi.unstubAllGlobals();
+  });
+  test('missing key', async () => {
+    await expect(aiThread({ provider: 'anthropic', apiKey: '' }, demo)).rejects.toBeInstanceOf(AiError);
   });
 });
