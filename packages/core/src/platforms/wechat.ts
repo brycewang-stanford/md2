@@ -32,7 +32,9 @@ export interface WechatResult {
   warnings: RenderWarning[];
 }
 
-const WECHAT_LINK = /^https?:\/\/(mp\.weixin\.qq\.com|weixin\.qq\.com)\//i;
+const BLOCK = new Set(['p', 'section', 'div', 'ul', 'ol', 'pre', 'blockquote', 'table', 'figure', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'hr']);
+
+const WECHAT_LINK =/^https?:\/\/(mp\.weixin\.qq\.com|weixin\.qq\.com)\//i;
 
 export function renderWechat(input: string | ParsedDoc, opts: WechatOptions = {}): WechatResult {
   const doc = typeof input === 'string' ? parseMarkdown(input) : input;
@@ -62,6 +64,12 @@ export function renderWechat(input: string | ParsedDoc, opts: WechatOptions = {}
     }
   });
   visit(tree, 'element', (el: Element) => {
+    // WeChat drops <div> wrappers (callouts lose their box); <section> survives
+    if (el.tagName === 'div') el.tagName = 'section';
+    // WeChat wraps a tight <li>'s inline content in a <section> itself, but leaves a
+    // leading <span> outside it (task-list ☑ ended up on its own line); wrap it all first
+    if (el.tagName === 'li' && el.children.length && !el.children.some((c) => c.type === 'element' && BLOCK.has(c.tagName)))
+      el.children = [{ type: 'element', tagName: 'section', properties: {}, children: el.children }];
     delete el.properties.className;
     delete el.properties.dataLang;
     delete el.properties.dataFootnote;

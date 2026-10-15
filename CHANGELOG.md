@@ -5,6 +5,8 @@
 ### Fixed
 - **公众号 images no longer fail to paste (有 N 个内容插入失败).** The WeChat editor fetches every pasted image from Tencent's servers, and "Copy for WeChat" was pasting local / webview image URLs. With WeChat credentials saved (the ones "Publish draft" uses), copy now uploads each image to WeChat's own CDN (mmbiz.qpic.cn); SVG badges are converted to PNG first. Without credentials, or if the upload fails, images map to public URLs as for Zhihu (`image_base`, pushed files → jsDelivr / wsrv.nl), with base64 and a warning as a last resort.
 - `md2 wechat` maps local images the same way and takes `--image-base` / `--no-git`.
+- **公众号 paste keeps its layout.** Callouts (`> [!TIP]` …) keep their box: WeChat drops `<div>`, so they are now `<section>`. Task-list items no longer split the ☑ and the text onto two lines. The paste no longer triggers 内容结构检测 warnings: the claude theme's bold highlighter (and aurora's h3 marker) use an inset shadow instead of a gradient text background, and footnote markers no longer set `line-height: 0`.
+- **Long image / Xiaohongshu export no longer times out** when the VS Code window is in the background or covered by another window. The rasteriser waited for an animation frame, which Chromium doesn't fire for a page that isn't painting.
 
 ## 0.2.5 — 2026-10-15
 

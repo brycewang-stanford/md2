@@ -70,7 +70,7 @@ const BASE_CSS = `
 .md2 del { text-decoration: line-through; color: var(--md2-muted); }
 .md2 mark { background: var(--md2-mark); color: inherit; padding: 0 2px; border-radius: 2px; }
 .md2 a, .md2 .link { color: var(--md2-primary); text-decoration: none; border-bottom: 1px solid var(--md2-primary-soft); }
-.md2 sup.footnote-ref { color: var(--md2-primary); font-size: 0.72em; line-height: 0; margin: 0 1px; }
+.md2 sup.footnote-ref { color: var(--md2-primary); font-size: 0.72em; line-height: 1; margin: 0 1px; }
 .md2 blockquote { margin: 1.3em 0; padding: 0.9em 1.1em; border-left: 4px solid var(--md2-primary); background: var(--md2-quote-bg); color: var(--md2-quote-text); border-radius: 0 6px 6px 0; }
 .md2 blockquote p { margin: 0.35em 0; }
 .md2 ul, .md2 ol { margin: 0.9em 0; padding-left: 1.7em; }
@@ -142,7 +142,7 @@ export const themes: Theme[] = [
 .md2 blockquote { border-left: 0; border-radius: 12px; padding: 1em 1.2em; }
 .md2 pre { border-radius: 12px; border: 1px solid #e8e6dc; }
 .md2 a, .md2 .link { color: #141413; border-bottom: 1px solid var(--md2-primary); }
-.md2 strong { background: linear-gradient(transparent 62%, rgba(217, 119, 87, 0.22) 62%); }`,
+.md2 strong { box-shadow: inset 0 -0.42em 0 rgba(217, 119, 87, 0.22); }`,
   },
   {
     id: 'linear',
@@ -329,7 +329,7 @@ export const themes: Theme[] = [
 .md2 h1 { text-align: center; font-size: var(--md2-fs-h1); font-weight: 800; }
 .md2 h1 .suffix { display: block; width: 56px; height: 4px; margin: 14px auto 0; border-radius: 4px; background: linear-gradient(90deg, #7f5af0, #2cb67d); }
 .md2 h2 .content { display: inline-block; padding: 5px 16px; border-radius: 10px; background: linear-gradient(90deg, #7f5af0, #4f8cff 55%, #2cb67d); color: #ffffff; font-size: var(--md2-fs-h3); }
-.md2 h3 .content { background: linear-gradient(transparent 60%, rgba(44, 182, 125, 0.25) 60%); }
+.md2 h3 .content { box-shadow: inset 0 -0.45em 0 rgba(44, 182, 125, 0.25); }
 .md2 blockquote { border-left: 0; border-radius: 14px; background: linear-gradient(135deg, rgba(127, 90, 240, 0.08), rgba(44, 182, 125, 0.08)); }
 .md2 pre { border-radius: 14px; }
 .md2 strong { color: #5b3fd6; }

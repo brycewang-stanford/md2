@@ -95,6 +95,12 @@ describe('wechat', () => {
   test('mp.weixin links are kept', () => {
     expect(renderWechat('[x](https://mp.weixin.qq.com/s/abc)').html).toContain('href="https://mp.weixin.qq.com/s/abc"');
   });
+  test('survives the WeChat editor: no div, task items in one block, no text gradients', () => {
+    expect(html).not.toContain('<div');
+    expect(html).toMatch(/<li[^>]*><section><span[^>]*>☑ <\/span> 公众号一键复制<\/section><\/li>/);
+    expect(html).not.toMatch(/<(strong|span)[^>]*linear-gradient/);
+    expect(html).not.toContain('line-height: 0; margin: 0 1px');
+  });
 });
 
 describe('zhihu', () => {
