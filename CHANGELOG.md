@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- **公众号 images no longer fail to paste (有 N 个内容插入失败).** The WeChat editor fetches every pasted image from Tencent's servers, and "Copy for WeChat" was pasting local / webview image URLs. With WeChat credentials saved (the ones "Publish draft" uses), copy now uploads each image to WeChat's own CDN (mmbiz.qpic.cn); SVG badges are converted to PNG first. Without credentials, or if the upload fails, images map to public URLs as for Zhihu (`image_base`, pushed files → jsDelivr / wsrv.nl), with base64 and a warning as a last resort.
+- `md2 wechat` maps local images the same way and takes `--image-base` / `--no-git`.
+
 ## 0.2.5 — 2026-10-15
 
 ### Fixed

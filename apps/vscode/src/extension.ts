@@ -5,6 +5,7 @@ import { aiXhsCopy, aiThread, aiWechatMeta, aiCoverCopy, type AiConfig, type Soc
 import { copyHtml } from '../../../packages/cli/src/clipboard';
 import { publishWechatDraft } from '../../../packages/cli/src/publish';
 import { publicImages } from '../../../packages/cli/src/public-images';
+import { wechatImages } from '../../../packages/cli/src/wechat-images';
 import { PreviewPanel, type RequestHandler } from './panel';
 
 const SECRET_AI_KEY = 'md2.ai.apiKey';
@@ -103,6 +104,20 @@ const handle: RequestHandler = async (msg, panel) => {
       if (!doc || doc.uri.scheme !== 'file') return { map: {}, inlined: [], unreachable: [] };
       const imageBase = typeof msg.imageBase === 'string' ? msg.imageBase : undefined;
       return publicImages(msg.srcs as string[], path.dirname(doc.uri.fsPath), { imageBase });
+    }
+    case 'wechatImages': {
+      // With saved API credentials, upload to WeChat's own CDN instead of relying on its fetcher; never prompts
+      const appId = await ctx.secrets.get(SECRET_WX_ID);
+      const appSecret = await ctx.secrets.get(SECRET_WX_SECRET);
+      const doc = panel.document;
+      if (!appId || !appSecret || !doc) return null;
+      const dir = doc.uri.scheme === 'file' ? path.dirname(doc.uri.fsPath) : (vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '.');
+      try {
+        return await wechatImages(msg.srcs as string[], dir, { appId, appSecret });
+      } catch (e) {
+        PreviewPanel.output.appendLine(`wechatImages: ${(e as Error).message}`);
+        return { map: {}, failed: [], error: (e as Error).message };
+      }
     }
     case 'ai':
       return runAi(String(msg.task), String(msg.markdown), (msg.platform as SocialPlatformId) ?? 'x');

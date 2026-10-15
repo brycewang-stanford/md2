@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { renderWechat, type WechatSuggestion } from '@md2/core';
+import { renderWechat, isPublicImage, zhihuImageCandidates, type WechatSuggestion } from '@md2/core';
 import { Button, Toggle, Warnings, toast, Icon } from '../components/ui';
 import { AiButton } from '../components/ai';
 import { host } from '../lib/host';
@@ -17,22 +17,63 @@ export function WechatPanel({ doc, style, setStyle, scrollRatio, diagram }: Pane
   const [ai, setAi] = useState<WechatSuggestion | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
 
-  const result = useMemo(
-    () => renderWechat(doc, { ...styleOptions(style), linkReferences: linkRefs, macCodeBlock: mac, removeTitle, resolveImage: resolveAsset, diagram }),
-    [doc, style, linkRefs, mac, removeTitle, diagram],
-  );
+  const opts = { ...styleOptions(style), linkReferences: linkRefs, macCodeBlock: mac, removeTitle, diagram };
+  const result = useMemo(() => renderWechat(doc, { ...opts, resolveImage: resolveAsset }), [doc, style, linkRefs, mac, removeTitle, diagram]);
 
   useEffect(() => {
     const el = scroller.current;
     if (el) el.scrollTop = scrollRatio * (el.scrollHeight - el.clientHeight);
   }, [scrollRatio]);
 
-  const localImages = result.warnings.some((w) => w.code === 'local-image') || /src="(data|blob|https:\/\/file\+)/.test(result.html);
+  // Images WeChat's servers can't fetch: local files / webview URIs, and SVG or raw.githubusercontent.com URLs
+  const unhosted = doc.images.filter((s) => !s.startsWith('asset:') && (!isPublicImage(s) || zhihuImageCandidates(s).length > 0));
+  // VS Code maps these to public URLs at copy time; the web app can only warn
+  const localImages = host.publicImages
+    ? doc.images.some((s) => s.startsWith('asset:'))
+    : result.warnings.some((w) => w.code === 'local-image') || /src="(data|blob|https:\/\/file\+)/.test(result.html);
 
+  // The WeChat editor re-hosts every pasted image by fetching its src from its own
+  // servers (有 N 个内容插入失败 otherwise), so swap preview URLs for public ones
   const copy = async () => {
     try {
-      await host.copyRich(result.html, doc.markdown);
-      toast(t('已复制，去公众号后台编辑器粘贴即可', 'Copied — paste into the WeChat editor'));
+      let html = result.html;
+      const map: Record<string, string> = {};
+      let pub: { inlined: string[]; unreachable: string[] } = { inlined: [], unreachable: [] };
+      let uploadError: string | undefined;
+      // 1. API credentials saved (「发布到草稿箱」): upload to WeChat's own CDN, nothing left for its fetcher to fail on
+      const uploadable = doc.images.filter((s) => !s.startsWith('asset:') && !/^https?:\/\/mmbiz\.qpic\.cn\//i.test(s));
+      if (host.wechatImages && uploadable.length) {
+        toast(t(`正在上传 ${uploadable.length} 张图片到公众号…`, `Uploading ${uploadable.length} images to WeChat…`));
+        const w = await host.wechatImages(uploadable);
+        if (w) {
+          Object.assign(map, w.map);
+          uploadError = w.error;
+        }
+      }
+      // 2. Anything not uploaded: public URLs WeChat's servers can fetch (jsDelivr / image_base), base64 as a last resort
+      const rest = unhosted.filter((s) => !map[s]);
+      if (host.publicImages && rest.length) {
+        if (!Object.keys(map).length) toast(t(`正在准备 ${rest.length} 张图片…`, `Preparing ${rest.length} images…`));
+        const r = await host.publicImages(rest, doc.frontmatter.image_base as string | undefined);
+        Object.assign(map, r.map);
+        pub = r;
+      }
+      if (Object.keys(map).length) html = renderWechat(doc, { ...opts, resolveImage: (s) => map[s] ?? resolveAsset(s) }).html;
+      if (uploadError) console.warn('md2: WeChat image upload failed, using public URLs:', uploadError);
+      await host.copyRich(html, doc.markdown);
+      const broken = [...html.matchAll(/<img[^>]+src="([^"]*)"/g)].filter((m) => !isPublicImage(m[1].replace(/&amp;/g, '&'))).length;
+      if (broken) toast(t(`已复制，但 ${broken} 张图片公众号无法抓取（文件不存在？）`, `Copied, but WeChat can’t fetch ${broken} images (missing files?)`), 'err');
+      else if (pub.inlined.length)
+        toast(
+          t(
+            `已复制；${pub.inlined.length} 张图片未推送到 GitHub，已内嵌为 base64，公众号可能插入失败 —— 请先 git push、设置 image_base，或用「发布到草稿箱」`,
+            `Copied; ${pub.inlined.length} unpushed images inlined as base64, which WeChat may reject — git push, set image_base, or use “Publish draft”`,
+          ),
+          'err',
+        );
+      else if (pub.unreachable.length) toast(t(`已复制，但 ${pub.unreachable.length} 张远程图片可能无法插入`, `Copied, but ${pub.unreachable.length} remote images may fail`), 'err');
+      else if (uploadError) toast(t(`已复制（图片上传公众号失败，已改用外链：${uploadError}）`, `Copied (WeChat upload failed, using public URLs: ${uploadError})`), 'err');
+      else toast(t('已复制，去公众号后台编辑器粘贴即可', 'Copied — paste into the WeChat editor'));
     } catch (e) {
       console.error('md2: export failed', e);
       toast(t('复制失败，请重试', 'Copy failed, try again'), 'err');

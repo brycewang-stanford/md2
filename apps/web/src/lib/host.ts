@@ -22,6 +22,8 @@ export interface Host {
   aiConfigured?(): Promise<boolean>;
   /** Map image srcs to URLs Zhihu's servers can fetch (VS Code: jsDelivr for pushed files, else data URLs; verified alternatives for SVG / GitHub raw) */
   publicImages?(srcs: string[], imageBase?: string): Promise<{ map: Record<string, string>; inlined: string[]; unreachable: string[] }>;
+  /** Upload images to WeChat's CDN (mmbiz.qpic.cn) with saved API credentials; null when none are saved */
+  wechatImages?(srcs: string[]): Promise<{ map: Record<string, string>; failed: { src: string; error: string }[]; error?: string } | null>;
 }
 
 interface VsCodeApi {
@@ -126,6 +128,7 @@ function vscodeHost(api: VsCodeApi): Host {
     saveAiConfig: (cfg) => request('saveAiConfig', { config: cfg }),
     aiConfigured: () => request<boolean>('aiConfigured'),
     publicImages: (srcs, imageBase) => request('publicImages', { srcs, imageBase }),
+    wechatImages: (srcs) => request('wechatImages', { srcs }),
   };
 }
 

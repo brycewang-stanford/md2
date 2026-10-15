@@ -35,10 +35,24 @@ async function diagramsFor(doc: ParsedDoc, theme?: string, accent?: string): Pro
   return (_lang, code) => map.get(code);
 }
 
-export async function wechatHtml(src: Source, opts: WechatOptions = {}) {
-  const { doc } = await load(src);
+/**
+ * The WeChat editor re-hosts pasted images by fetching each src from its servers
+ * (有 N 个内容插入失败 otherwise), so local images are mapped to public URLs first.
+ */
+export async function wechatHtml(src: Source, opts: WechatOptions & PublicImageOptions = {}) {
+  const { doc, baseDir } = await load(src);
   const diagram = opts.diagram ?? (await diagramsFor(doc, opts.theme, opts.primaryColor));
-  return renderWechat(doc, { ...opts, diagram });
+  const imageBase = opts.imageBase ?? (doc.frontmatter.image_base as string | undefined);
+  const { map, inlined, unreachable } = await publicImages(doc.images, baseDir, { imageBase, noGit: opts.noGit });
+  const r = renderWechat(doc, { ...opts, diagram, resolveImage: opts.resolveImage ?? ((s) => map[s]) });
+  if (inlined.length)
+    r.warnings.push({
+      code: 'inlined-image',
+      message: `${inlined.length} 张本地图片未推送到 GitHub，已内嵌为 base64，公众号可能插入失败；请先 git push、设置 image_base，或用 md2 publish wechat 自动上传: ${inlined.join(', ')}`,
+    });
+  if (unreachable.length)
+    r.warnings.push({ code: 'unreachable-image', message: `公众号可能无法抓取这些远程图片（备用地址均不可用）: ${unreachable.join(', ')}` });
+  return r;
 }
 
 /** Zhihu fetches pasted images from its servers, so local images are mapped to public URLs first. */

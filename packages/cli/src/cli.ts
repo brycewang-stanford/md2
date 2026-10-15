@@ -78,9 +78,13 @@ styleOptions(
     .option('-c, --copy', 'copy rich text to clipboard, then paste into the WeChat editor')
     .option('--no-link-refs', 'keep external links instead of converting them to references')
     .option('--no-mac', 'no macOS dots on code blocks')
-    .option('--remove-title', 'drop the first H1'),
+    .option('--remove-title', 'drop the first H1')
+    .option('--image-base <url>', 'public URL prefix for local images (WeChat fetches every pasted image from its servers)')
+    .option('--no-git', 'do not map pushed images to jsDelivr; inline local images as base64'),
 ).action(async (file, o) => {
-  const r = await wechatHtml({ file }, { ...style(o), linkReferences: o.linkRefs, macCodeBlock: o.mac, removeTitle: o.removeTitle }).finally(closeBrowser);
+  const r = await wechatHtml({ file }, {
+    ...style(o), linkReferences: o.linkRefs, macCodeBlock: o.mac, removeTitle: o.removeTitle, imageBase: o.imageBase, noGit: o.git === false,
+  }).finally(closeBrowser);
   warn(r.warnings);
   if (o.copy) {
     copyHtml(r.html, r.doc.markdown);

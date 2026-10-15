@@ -4,6 +4,7 @@ import { publishWechat, wechatHtml, xThread, zhihuHtml } from '../src/actions.js
 import { publicImages } from '../src/public-images.js';
 import { inlineLocalImages, localPath, loadImage } from '../src/io.js';
 import { WechatApiError } from '../src/wechat-api.js';
+import { wechatImages } from '../src/wechat-images.js';
 
 const post = fileURLToPath(new URL('./fixtures/post.md', import.meta.url));
 const dir = fileURLToPath(new URL('./fixtures/', import.meta.url));
@@ -37,12 +38,45 @@ describe('zhihu images', () => {
   });
 });
 
+describe('wechat images', () => {
+  test('uploads to mmbiz.qpic.cn, dedupes by content, reports what it cannot upload', async () => {
+    const uploads: string[] = [];
+    vi.stubGlobal('fetch', async (url: string) => {
+      if (url.includes('/stable_token')) return Response.json({ access_token: 'tok' });
+      if (url.includes('/media/uploadimg')) {
+        uploads.push(url);
+        return Response.json({ url: `https://mmbiz.qpic.cn/x/${uploads.length}` });
+      }
+      throw new Error(`unexpected fetch ${url}`);
+    });
+    const creds = { appId: 'wx', appSecret: 's' };
+    const r = await wechatImages(['./pic.png', 'pic.png', './missing.png', 'https://mmbiz.qpic.cn/already'], dir, creds);
+    expect(r.map['./pic.png']).toBe('https://mmbiz.qpic.cn/x/1');
+    expect(r.map['pic.png']).toBe('https://mmbiz.qpic.cn/x/1');
+    expect(uploads.length).toBe(1);
+    expect(r.failed.map((f) => f.src)).toEqual(['./missing.png']);
+    expect(r.map['https://mmbiz.qpic.cn/already']).toBeUndefined();
+  });
+  test('bad credentials throw so the caller can fall back to public URLs', async () => {
+    vi.stubGlobal('fetch', async () => Response.json({ errcode: 40164, errmsg: 'invalid ip' }));
+    await expect(wechatImages(['./pic.png'], dir, { appId: 'wx', appSecret: 's' })).rejects.toThrow(/白名单/);
+  });
+});
+
 describe('actions', () => {
   test('wechat html from file (math engine loads lazily)', async () => {
-    const r = await wechatHtml({ file: post }, { theme: 'linear' });
+    const r = await wechatHtml({ file: post }, { theme: 'linear', noGit: true });
     expect(r.html).toContain('<svg');
     expect(r.html).toContain('#5e6ad2');
-    expect(r.warnings[0].code).toBe('local-image');
+    // WeChat fetches pasted images from its servers: never leave a relative path behind
+    expect(r.html).toMatch(/<img src="data:image\/png;base64,/);
+    expect(r.warnings.map((w) => w.code)).toContain('inlined-image');
+    expect(r.warnings.map((w) => w.code)).not.toContain('local-image');
+  });
+  test('wechat maps local images to image_base', async () => {
+    const r = await wechatHtml({ file: post }, { imageBase: 'https://img.example.com/posts' });
+    expect(r.html).toMatch(/<img src="https:\/\/img\.example\.com\/posts\//);
+    expect(r.warnings.map((w) => w.code)).not.toContain('inlined-image');
   });
   test('thread from markdown string', async () => {
     expect((await xThread({ markdown: '# T\n\nhello world' })).tweets.length).toBeGreaterThan(0);
