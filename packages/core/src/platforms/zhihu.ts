@@ -67,6 +67,52 @@ export function isPublicImage(src: string): boolean {
   return !/^https?:\/\/(localhost|127\.|0\.0\.0\.0|\[::1\]|[^/]*\.localhost[:/]|[^/]*vscode-(resource|cdn|webview))/i.test(src);
 }
 
+const proxyPng = (url: string, png: boolean) =>
+  `https://wsrv.nl/?url=${encodeURIComponent(url)}${png ? '&output=png' : ''}`;
+
+/** owner/repo/ref/path of a file URL on GitHub (raw.githubusercontent.com or github.com/…/raw|blob/…). */
+function githubFile(u: URL): { owner: string; repo: string; ref: string; path: string } | undefined {
+  const seg = u.pathname.split('/').filter(Boolean);
+  if (u.hostname === 'raw.githubusercontent.com' && seg.length >= 4) {
+    const [owner, repo, ...rest] = seg;
+    const named = rest[0] === 'refs' && (rest[1] === 'heads' || rest[1] === 'tags');
+    const ref = named ? rest[2] : rest[0];
+    const path = rest.slice(named ? 3 : 1).join('/');
+    return ref && path ? { owner, repo, ref, path } : undefined;
+  }
+  if (u.hostname === 'github.com' && seg.length >= 5 && (seg[2] === 'raw' || seg[2] === 'blob')) {
+    return { owner: seg[0], repo: seg[1], ref: seg[3], path: seg.slice(4).join('/') };
+  }
+  return undefined;
+}
+
+/**
+ * Remote images Zhihu's servers are likely to fail on, mapped to alternatives in
+ * order of preference (empty = keep the URL as is):
+ * - SVG: Zhihu only re-hosts raster images → shields.io's PNG endpoint for badges,
+ *   otherwise the wsrv.nl image proxy converting to PNG
+ * - GitHub raw / blob URLs: raw.githubusercontent.com is unreachable from mainland
+ *   China → jsDelivr, then wsrv.nl (jsDelivr can time out on a cold, large repo)
+ */
+export function zhihuImageCandidates(src: string): string[] {
+  if (!/^https?:\/\//i.test(src) || !isPublicImage(src)) return [];
+  let u: URL;
+  try {
+    u = new URL(src);
+  } catch {
+    return [];
+  }
+  const svg = /\.svg$/i.test(u.pathname);
+  if (u.hostname === 'img.shields.io') return [`https://raster.shields.io${u.pathname.replace(/\.svg$/i, '')}.png${u.search}`];
+  const gh = githubFile(u);
+  if (gh) {
+    const raw = `https://raw.githubusercontent.com/${gh.owner}/${gh.repo}/${gh.ref}/${gh.path}`;
+    const cdn = `https://cdn.jsdelivr.net/gh/${gh.owner}/${gh.repo}@${gh.ref}/${gh.path}`;
+    return svg ? [proxyPng(cdn, true), proxyPng(raw, true)] : [cdn, proxyPng(raw, false)];
+  }
+  return svg ? [proxyPng(src, true)] : [];
+}
+
 function zhihuReference(n: number, text: string, url: string): Element {
   return h(
     'sup',
@@ -88,6 +134,8 @@ export function renderZhihu(input: string | ParsedDoc, opts: ZhihuOptions = {}):
 
   if (opts.removeTitle !== false) removeFirstH1(tree);
   if (opts.resolveImage) rewriteImages(tree, opts.resolveImage);
+  // Hosts / formats Zhihu can't re-host; the CLI and VS Code verify these ahead of time via resolveImage
+  rewriteImages(tree, (src) => zhihuImageCandidates(src)[0]);
 
   figureImages(tree, true);
   transformMath(tree, (tex, display) =>

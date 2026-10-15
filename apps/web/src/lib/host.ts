@@ -20,8 +20,8 @@ export interface Host {
   saveAiConfig?(cfg: AiConfig): Promise<void>;
   /** Whether a key is configured on the host side (VS Code) */
   aiConfigured?(): Promise<boolean>;
-  /** Map local image srcs to URLs Zhihu's servers can fetch (VS Code: jsDelivr for pushed files, else data URLs) */
-  publicImages?(srcs: string[], imageBase?: string): Promise<{ map: Record<string, string>; inlined: string[] }>;
+  /** Map image srcs to URLs Zhihu's servers can fetch (VS Code: jsDelivr for pushed files, else data URLs; verified alternatives for SVG / GitHub raw) */
+  publicImages?(srcs: string[], imageBase?: string): Promise<{ map: Record<string, string>; inlined: string[]; unreachable: string[] }>;
 }
 
 interface VsCodeApi {

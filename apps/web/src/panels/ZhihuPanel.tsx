@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { renderZhihu, isPublicImage } from '@md2/core';
+import { renderZhihu, isPublicImage, zhihuImageCandidates } from '@md2/core';
 import { Button, Toggle, Warnings, toast } from '../components/ui';
 import { host } from '../lib/host';
 import { resolveAsset } from '../lib/assets';
@@ -26,16 +26,20 @@ export function ZhihuPanel({ doc, scrollRatio }: PanelProps) {
     try {
       let out = result;
       let inlined = 0;
-      const local = doc.images.filter((s) => !s.startsWith('asset:') && !isPublicImage(s));
-      if (host.publicImages && local.length) {
-        toast(t(`正在准备 ${local.length} 张图片…`, `Preparing ${local.length} images…`));
-        const pub = await host.publicImages(local, doc.frontmatter.image_base as string | undefined);
+      let unreachable = 0;
+      // local files, plus remote SVG / GitHub raw images whose alternatives get verified
+      const pending = doc.images.filter((s) => !s.startsWith('asset:') && (!isPublicImage(s) || zhihuImageCandidates(s).length));
+      if (host.publicImages && pending.length) {
+        toast(t(`正在准备 ${pending.length} 张图片…`, `Preparing ${pending.length} images…`));
+        const pub = await host.publicImages(pending, doc.frontmatter.image_base as string | undefined);
         out = renderZhihu(doc, { ...opts, resolveImage: (s) => pub.map[s] ?? resolveAsset(s) });
         inlined = pub.inlined.length;
+        unreachable = pub.unreachable?.length ?? 0;
       }
       await host.copyRich(out.html, out.text);
       const broken = out.warnings.filter((w) => w.code === 'local-image').length;
       if (broken) toast(t(`已复制，但 ${broken} 张图片知乎无法抓取（文件不存在？）`, `Copied, but Zhihu can’t fetch ${broken} images (missing files?)`), 'err');
+      else if (unreachable) toast(t(`已复制，但 ${unreachable} 张远程图片的备用地址都无法访问，知乎可能上传失败`, `Copied, but ${unreachable} remote images had no reachable alternative`), 'err');
       else if (inlined) toast(t(`已复制；${inlined} 张图片未推送到 GitHub，已内嵌为 base64`, `Copied; ${inlined} unpushed images inlined as base64`));
       else toast(t('已复制，打开知乎写文章页粘贴', 'Copied — paste into Zhihu’s editor'));
     } catch (e) {

@@ -45,13 +45,15 @@ export async function wechatHtml(src: Source, opts: WechatOptions = {}) {
 export async function zhihuHtml(src: Source, opts: ZhihuOptions & PublicImageOptions = {}) {
   const { doc, baseDir } = await load(src);
   const imageBase = opts.imageBase ?? (doc.frontmatter.image_base as string | undefined);
-  const { map, inlined } = await publicImages(doc.images, baseDir, { imageBase, noGit: opts.noGit });
+  const { map, inlined, unreachable } = await publicImages(doc.images, baseDir, { imageBase, noGit: opts.noGit });
   const r = renderZhihu(doc, { ...opts, resolveImage: opts.resolveImage ?? ((s) => map[s]) });
   if (inlined.length)
     r.warnings.push({
       code: 'inlined-image',
       message: `${inlined.length} 张本地图片未推送到 GitHub，已内嵌为 base64；若知乎显示上传失败，请先 git push 或设置 image_base: ${inlined.join(', ')}`,
     });
+  if (unreachable.length)
+    r.warnings.push({ code: 'unreachable-image', message: `知乎可能无法抓取这些远程图片（备用地址均不可用）: ${unreachable.join(', ')}` });
   return r;
 }
 

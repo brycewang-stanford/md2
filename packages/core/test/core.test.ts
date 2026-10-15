@@ -4,7 +4,7 @@ import {
   parseMarkdown, renderWechat, renderZhihu, renderX, renderXhs, renderXhsText, renderCover,
   tweetLength, inlineCss, specificity, themes, codeThemes, coverTemplates, coverSizes,
   preloadMath, renderLongImage, toUnicodeBold, socialPlatforms, aiXhsCopy, aiThread, articleText, AiError,
-  texToSvg, isPublicImage,
+  texToSvg, isPublicImage, zhihuImageCandidates,
 } from '../src/index.js';
 import { fromHtml } from 'hast-util-from-html';
 import { toHtml } from 'hast-util-to-html';
@@ -105,6 +105,20 @@ describe('zhihu', () => {
     expect(isPublicImage('https://file+.vscode-resource.vscode-cdn.net/Users/a.png')).toBe(false);
     expect(isPublicImage('http://localhost:5173/a.png')).toBe(false);
     expect(isPublicImage('blob:https://x/1')).toBe(false);
+  });
+  test('SVG and GitHub raw images get Zhihu-fetchable alternatives', () => {
+    expect(zhihuImageCandidates('https://img.shields.io/pypi/v/StatsPAI.svg')).toEqual(['https://raster.shields.io/pypi/v/StatsPAI.png']);
+    expect(zhihuImageCandidates('https://raw.githubusercontent.com/o/r/main/docs/a.png')).toEqual([
+      'https://cdn.jsdelivr.net/gh/o/r@main/docs/a.png',
+      'https://wsrv.nl/?url=https%3A%2F%2Fraw.githubusercontent.com%2Fo%2Fr%2Fmain%2Fdocs%2Fa.png',
+    ]);
+    expect(zhihuImageCandidates('https://github.com/o/r/blob/v1/a.png')[0]).toBe('https://cdn.jsdelivr.net/gh/o/r@v1/a.png');
+    expect(zhihuImageCandidates('https://x.org/badge.svg')).toEqual(['https://wsrv.nl/?url=https%3A%2F%2Fx.org%2Fbadge.svg&output=png']);
+    expect(zhihuImageCandidates('https://example.com/a.png')).toEqual([]);
+    // idempotent: an alternative needs no further alternative
+    for (const c of zhihuImageCandidates('https://raw.githubusercontent.com/o/r/main/a.svg')) expect(zhihuImageCandidates(c)).toEqual([]);
+    const { html } = renderZhihu('![b](https://img.shields.io/badge/x-y-blue.svg)');
+    expect(html).toContain('src="https://raster.shields.io/badge/x-y-blue.png"');
   });
   const { html } = renderZhihu(demo);
   test('equations use zhihu images; display ends with \\\\', () => {

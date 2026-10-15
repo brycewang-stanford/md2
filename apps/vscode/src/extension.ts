@@ -100,7 +100,7 @@ const handle: RequestHandler = async (msg, panel) => {
     case 'publicImages': {
       // Zhihu fetches pasted images from its servers: map local files to public URLs / data URLs
       const doc = panel.document;
-      if (!doc || doc.uri.scheme !== 'file') return { map: {}, inlined: [] };
+      if (!doc || doc.uri.scheme !== 'file') return { map: {}, inlined: [], unreachable: [] };
       const imageBase = typeof msg.imageBase === 'string' ? msg.imageBase : undefined;
       return publicImages(msg.srcs as string[], path.dirname(doc.uri.fsPath), { imageBase });
     }

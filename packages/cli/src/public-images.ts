@@ -5,13 +5,18 @@
  * map local images to URLs the public internet can reach:
  *
  *   1. `imageBase` (front matter `image_base`) — your own image host / CDN prefix
- *   2. files committed and pushed to a GitHub remote → jsDelivr, pinned to the
- *      pushed commit (verified reachable, which also warms jsDelivr's cache)
+ *   2. files committed and pushed to a GitHub remote → jsDelivr pinned to the
+ *      pushed commit, else the wsrv.nl proxy of the raw file (each verified
+ *      reachable, which also warms the cache before Zhihu fetches it)
  *   3. anything else → inlined data URL, as a last resort
+ *
+ * Remote images Zhihu tends to fail on (SVG, raw.githubusercontent.com) are
+ * swapped for the first reachable of `zhihuImageCandidates`.
  */
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { relative, sep } from 'node:path';
+import { zhihuImageCandidates } from '@md2/core';
 import { localPath, mimeOf } from './io.js';
 
 export interface PublicImageOptions {
@@ -26,6 +31,8 @@ export interface PublicImages {
   map: Record<string, string>;
   /** srcs that had to be inlined as data URLs */
   inlined: string[];
+  /** remote srcs none of whose alternatives were reachable */
+  unreachable: string[];
 }
 
 function git(cwd: string, ...args: string[]): string | undefined {
@@ -82,10 +89,28 @@ const encodePath = (p: string) => p.split('/').map(encodeURIComponent).join('/')
 export async function publicImages(srcs: string[], baseDir: string, opts: PublicImageOptions = {}): Promise<PublicImages> {
   const map: Record<string, string> = {};
   const inlined: string[] = [];
-  const locals = [...new Set(srcs)]
+  const unreachable: string[] = [];
+  const unique = [...new Set(srcs)];
+  const remotes = unique.map((src) => ({ src, candidates: zhihuImageCandidates(src) })).filter((x) => x.candidates.length);
+  const locals = unique
     .map((src) => ({ src, file: localPath(src, baseDir) }))
     .filter((x): x is { src: string; file: string } => !!x.file);
-  if (!locals.length) return { map, inlined };
+
+  const remoteDone = Promise.all(
+    remotes.map(async ({ src, candidates }) => {
+      for (const url of candidates) {
+        if (await reachable(url)) {
+          map[src] = url;
+          return;
+        }
+      }
+      unreachable.push(src);
+    }),
+  );
+  if (!locals.length) {
+    await remoteDone;
+    return { map, inlined, unreachable };
+  }
 
   const base = opts.imageBase?.trim();
   const repo = base || opts.noGit ? undefined : pushedRepo(baseDir);
@@ -99,15 +124,20 @@ export async function publicImages(srcs: string[], baseDir: string, opts: Public
       }
       if (repo && isPushed(repo, file)) {
         const rel = relative(repo.root, file).split(sep).join('/');
-        const url = `https://cdn.jsdelivr.net/gh/${repo.owner}/${repo.repo}@${repo.sha}/${encodePath(rel)}`;
-        if (await reachable(url)) {
-          map[src] = url;
-          return;
+        // jsDelivr first, then the wsrv.nl proxy (each new commit is a cold jsDelivr cache,
+        // which can 503); SVG is converted to PNG since Zhihu only re-hosts raster images
+        const raw = `https://raw.githubusercontent.com/${repo.owner}/${repo.repo}/${repo.sha}/${encodePath(rel)}`;
+        for (const url of zhihuImageCandidates(raw)) {
+          if (await reachable(url)) {
+            map[src] = url;
+            return;
+          }
         }
       }
       map[src] = `data:${mimeOf(file)};base64,${readFileSync(file).toString('base64')}`;
       inlined.push(src);
     }),
   );
-  return { map, inlined };
+  await remoteDone;
+  return { map, inlined, unreachable };
 }
