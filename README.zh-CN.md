@@ -71,7 +71,7 @@
 
 ### VS Code 扩展
 
-下载 [Release](https://github.com/brycewang-stanford/md2/releases) 里的 `.vsix`，在 VS Code 中执行「扩展：从 VSIX 安装…」（扩展市场上架后可直接搜索 **md2**）。打开任意 Markdown，点击编辑器右上角的 md2 图标或按 <kbd>⌘</kbd><kbd>⌥</kbd><kbd>M</kbd>（Windows / Linux：<kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>M</kbd>）：
+从 [VS Code 扩展市场](https://marketplace.visualstudio.com/items?itemName=brycewang-stanford.md2)安装（在扩展视图搜索 **md2**，或运行 `code --install-extension brycewang-stanford.md2`）。每个 [Release](https://github.com/brycewang-stanford/md2/releases) 也附有 `.vsix` 安装包。打开任意 Markdown，点击编辑器右上角的 md2 图标或按 <kbd>⌘</kbd><kbd>⌥</kbd><kbd>M</kbd>（Windows / Linux：<kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>M</kbd>）：
 
 - 实时预览所有平台，跟随编辑器滚动；
 - 命令面板 / 右键菜单：复制到公众号 / 知乎、导出小红书卡片 / 长图 / 封面（保存到 `md2-export/`）、复制推文；

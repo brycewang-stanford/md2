@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.3 — 2026-10-15
+
+### Changed
+- **Published on the VS Code Marketplace** as [`brycewang-stanford.md2`](https://marketplace.visualstudio.com/items?itemName=brycewang-stanford.md2). The extension ID changed from `brycewang.md2`, so uninstall a sideloaded copy before installing from the Marketplace.
+
 ## 0.2.2 — 2026-10-15
 
 ### Changed

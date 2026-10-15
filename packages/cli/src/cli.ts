@@ -14,7 +14,7 @@ import { copyHtml, copyText } from './clipboard.js';
 import { closeBrowser } from './browser.js';
 import { startMcpServer } from './mcp.js';
 
-const VERSION = '0.2.2';
+const VERSION = '0.2.3';
 
 const c = {
   green: (s: string) => `\x1b[32m${s}\x1b[0m`,
