@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.4 — 2026-10-15
+
+### Changed
+- **md2 has its own preview button** in the editor title bar: an `md2` glyph instead of the stock preview icon, so it is no longer confused with VS Code's built-in Markdown preview.
+
 ## 0.2.3 — 2026-10-15
 
 ### Changed
