@@ -26,7 +26,8 @@ export function ZhihuPanel({ doc, scrollRatio }: PanelProps) {
     try {
       await host.copyRich(result.html, result.text);
       toast(t('已复制，打开知乎写文章页粘贴', 'Copied — paste into Zhihu’s editor'));
-    } catch {
+    } catch (e) {
+      console.error('md2: export failed', e);
       toast(t('复制失败，请重试', 'Copy failed, try again'), 'err');
     }
   };

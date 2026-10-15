@@ -91,7 +91,8 @@ export function XhsPanel({ doc, style, setStyle, diagram }: PanelProps) {
     if (!el) return;
     try {
       await host.save(name(i), await elementToPng(el));
-    } catch {
+    } catch (e) {
+      console.error('md2: export failed', e);
       toast(t('导出失败（图片跨域？）', 'Export failed (cross-origin image?)'), 'err');
     }
   };
@@ -113,7 +114,7 @@ export function XhsPanel({ doc, style, setStyle, diagram }: PanelProps) {
       }
       toast(t(`已导出 ${files.length} 张 1080×1440 图片`, `Exported ${files.length} images (1080×1440)`));
     } catch (e) {
-      console.error(e);
+      console.error('md2: export failed', e);
       toast(t('导出失败：外链图片可能不允许跨域，请改用本地图片', 'Export failed: a remote image may block cross-origin use'), 'err');
     } finally {
       setBusy(false);

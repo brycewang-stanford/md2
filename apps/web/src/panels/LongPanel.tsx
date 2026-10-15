@@ -31,7 +31,8 @@ export function LongPanel({ doc, style, setStyle, diagram }: PanelProps) {
       const blob = await elementToPng(el, 2);
       await host.save(`${doc.title || 'md2'}-long.png`, blob);
       toast(t(`已导出 ${width * 2}px 宽长图`, `Exported a ${width * 2}px-wide image`));
-    } catch {
+    } catch (e) {
+      console.error('md2: export failed', e);
       toast(t('导出失败（外链图片跨域？）', 'Export failed (cross-origin image?)'), 'err');
     } finally {
       setBusy(false);

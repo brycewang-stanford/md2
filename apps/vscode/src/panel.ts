@@ -156,9 +156,28 @@ export class PreviewPanel {
     });
   }
 
+  /** Make sure the preview is on screen (hidden webviews have no layout to export). */
+  async ensureVisible(timeoutMs = 4000) {
+    PreviewPanel.logs.push(`ensureVisible: visible=${this.panel.visible} active=${this.panel.active}`);
+    if (this.panel.visible) return;
+    const shown = new Promise<void>((resolve) => {
+      const sub = this.panel.onDidChangeViewState((e) => {
+        if (e.webviewPanel.visible) {
+          sub.dispose();
+          resolve();
+        }
+      });
+      setTimeout(() => (sub.dispose(), resolve()), timeoutMs);
+    });
+    this.panel.reveal(this.panel.viewColumn ?? vscode.ViewColumn.Beside, true);
+    await shown;
+    PreviewPanel.output.appendLine(`ensureVisible → visible=${this.panel.visible} column=${this.panel.viewColumn}`);
+  }
+
   /** Switch tab and run the panel's main action (copy / export). */
   async command(tab: string, action: 'primary' | 'show' = 'primary') {
     await this.whenReady();
+    await this.ensureVisible();
     this.post({ type: 'command', tab, action: action === 'primary' ? 'primary' : undefined });
   }
 

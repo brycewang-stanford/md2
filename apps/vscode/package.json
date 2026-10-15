@@ -1,7 +1,7 @@
 {
   "name": "md2",
-  "displayName": "md2 — Markdown to WeChat, Zhihu, Xiaohongshu & Threads",
-  "description": "Live-preview and export Markdown for 公众号 (WeChat), 知乎 (Zhihu), 小红书 (Xiaohongshu) image cards, X / Threads / Bluesky / LinkedIn threads, long images and covers — 16 modern themes, math, Mermaid, AI copywriting.",
+  "displayName": "md2 \u2014 Markdown to WeChat, Zhihu, Xiaohongshu & Threads",
+  "description": "Live-preview and export Markdown for \u516c\u4f17\u53f7 (WeChat), \u77e5\u4e4e (Zhihu), \u5c0f\u7ea2\u4e66 (Xiaohongshu) image cards, X / Threads / Bluesky / LinkedIn threads, long images and covers \u2014 16 modern themes, math, Mermaid, AI copywriting.",
   "version": "0.2.0",
   "publisher": "brycewang",
   "license": "MIT",
@@ -29,21 +29,21 @@
   "keywords": [
     "markdown",
     "wechat",
-    "公众号",
-    "微信",
+    "\u516c\u4f17\u53f7",
+    "\u5fae\u4fe1",
     "zhihu",
-    "知乎",
+    "\u77e5\u4e4e",
     "xiaohongshu",
-    "小红书",
+    "\u5c0f\u7ea2\u4e66",
     "rednote",
     "twitter",
     "x",
     "threads",
     "bluesky",
     "linkedin",
-    "排版",
+    "\u6392\u7248",
     "cover",
-    "封面",
+    "\u5c01\u9762",
     "mermaid",
     "latex"
   ],
@@ -62,17 +62,17 @@
       },
       {
         "command": "md2.copyWechat",
-        "title": "Copy for WeChat (公众号)",
+        "title": "Copy for WeChat (\u516c\u4f17\u53f7)",
         "category": "md2"
       },
       {
         "command": "md2.copyZhihu",
-        "title": "Copy for Zhihu (知乎)",
+        "title": "Copy for Zhihu (\u77e5\u4e4e)",
         "category": "md2"
       },
       {
         "command": "md2.exportXhs",
-        "title": "Export Xiaohongshu Cards (小红书)",
+        "title": "Export Xiaohongshu Cards (\u5c0f\u7ea2\u4e66)",
         "category": "md2"
       },
       {
@@ -82,17 +82,17 @@
       },
       {
         "command": "md2.exportLong",
-        "title": "Export Long Image (长图)",
+        "title": "Export Long Image (\u957f\u56fe)",
         "category": "md2"
       },
       {
         "command": "md2.exportCover",
-        "title": "Export Cover (封面)",
+        "title": "Export Cover (\u5c01\u9762)",
         "category": "md2"
       },
       {
         "command": "md2.publishWechat",
-        "title": "Publish to WeChat Drafts (公众号草稿箱)",
+        "title": "Publish to WeChat Drafts (\u516c\u4f17\u53f7\u8349\u7a3f\u7bb1)",
         "category": "md2"
       },
       {
@@ -236,7 +236,8 @@
   "scripts": {
     "build": "node build.mjs",
     "package": "node build.mjs && vsce package --no-dependencies",
-    "test": "node test/run.mjs"
+    "test": "node test/run.mjs",
+    "typecheck": "tsc --noEmit -p ."
   },
   "devDependencies": {
     "@types/node": "^26.6.5",

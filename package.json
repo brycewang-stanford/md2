@@ -3,11 +3,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "pnpm --filter @md2/core build && pnpm --filter md2all build && pnpm --filter @md2/web build",
+    "build": "pnpm --filter @md2/core build && pnpm --filter md2all build && pnpm --filter @md2/web build && pnpm --filter md2 build",
     "dev": "pnpm --filter @md2/web dev",
     "test": "pnpm --filter @md2/core build && pnpm --filter @md2/core --filter md2all test",
     "typecheck": "pnpm -r typecheck",
-    "md2": "node packages/cli/dist/cli.js"
+    "md2": "node packages/cli/dist/cli.js",
+    "test:vscode": "pnpm --filter md2 test",
+    "package:vscode": "pnpm --filter md2 package"
   },
   "packageManager": "pnpm@10.33.2",
   "engines": {

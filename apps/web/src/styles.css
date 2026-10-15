@@ -385,3 +385,10 @@ textarea.input { height: auto; padding: 8px 10px; resize: vertical; line-height:
 .app.is-embedded .tabs { margin: 0; }
 body.vscode-dark, body.vscode-light { padding: 0; }
 .popover.tuning .select, .popover.tuning .select select { width: 100%; max-width: none; }
+
+/* Narrow VS Code panels: keep tabs scrollable on one row and hide secondary chrome */
+@media (max-width: 860px) {
+  .app.is-embedded .topbar { flex-wrap: nowrap; }
+  .app.is-embedded .tabs { order: 0; width: auto; flex: 1; min-width: 0; }
+  .app.is-embedded .file-name { display: none; }
+}

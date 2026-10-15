@@ -81,7 +81,8 @@ export function CoverPanel({ doc }: PanelProps) {
     try {
       await host.save(`cover-${size}-${tpl}.png`, await elementToPng(main));
       toast(t(`已导出 ${sz.width}×${sz.height}`, `Exported ${sz.width}×${sz.height}`));
-    } catch {
+    } catch (e) {
+      console.error('md2: export failed', e);
       toast(t('导出失败', 'Export failed'), 'err');
     }
   };
@@ -100,7 +101,8 @@ export function CoverPanel({ doc }: PanelProps) {
       if (host.kind === 'vscode') for (const f of files) await host.save(`covers/${f.name}`, f.blob);
       else await host.save(`${doc.title || 'md2'}-covers.zip`, await zipPngs(files));
       toast(t(`已导出 ${files.length} 个尺寸`, `Exported ${files.length} sizes`));
-    } catch {
+    } catch (e) {
+      console.error('md2: export failed', e);
       toast(t('导出失败', 'Export failed'), 'err');
     } finally {
       box.remove();

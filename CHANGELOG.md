@@ -1,0 +1,28 @@
+# Changelog
+
+## 0.2.0 — 2026-10-15
+
+### New
+- **VS Code extension**: live preview beside the editor with every md2 tab, scroll sync, copy and export commands that write into your workspace, WeChat draft publishing, and AI with keys in SecretStorage.
+- **Threads beyond X**: Threads, Bluesky, Mastodon and LinkedIn, each with its own counting rules and image limits. Unicode-bold headings.
+- **长图 (long image)** export in the web app, CLI (`md2 long`), MCP (`md2_long_image`) and VS Code.
+- **Mermaid diagrams** render to self-contained SVG (computed styles baked in, no `<style>`, no `foreignObject`), so they survive pasting into WeChat.
+- **AI copywriting** (bring your own key): Claude through the official Anthropic SDK (default `claude-opus-5-5`, structured JSON output, server-side refusal fallback) or any OpenAI-compatible endpoint. Covers 小红书 titles/caption/tags, thread rewrites, 公众号 headlines/digest and cover copy. Also available as `md2 ai …` and the `md2_ai` MCP tool.
+- **Fine-tuning**: line height, paragraph and letter spacing, 首行缩进, justify, heading alignment and custom CSS (`--indent`, `--justify`, `--css` … in the CLI).
+- **English UI** with a one-click 中文 / EN toggle, plus an English sample article.
+- <kbd>⌘/Ctrl</kbd><kbd>⇧</kbd><kbd>C</kbd> runs the current tab's main action.
+- New logo.
+
+### Improved
+- MathJax loads lazily, which halves the web app's initial download (1.15 MB → 0.55 MB gzipped).
+- The CLI renders diagrams through headless Chromium, and `publish wechat` no longer needs a browser when the article has a cover.
+- The MCP server closes idle browsers and shuts down cleanly.
+
+### Fixed
+- The X thread no longer repeats the intro paragraph after the hook post, and keeps display formulas.
+- Inline Zhihu formulas no longer render as display blocks in the preview.
+- Long-image header fonts are no longer lost to quote escaping.
+
+## 0.1.0 — 2026-10-15
+
+First release: WeChat, Zhihu, Xiaohongshu cards, X threads and covers. 16 themes, a web app, CLI and MCP server.

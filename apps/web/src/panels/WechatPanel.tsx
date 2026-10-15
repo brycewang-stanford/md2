@@ -33,7 +33,8 @@ export function WechatPanel({ doc, style, setStyle, scrollRatio, diagram }: Pane
     try {
       await host.copyRich(result.html, doc.markdown);
       toast(t('已复制，去公众号后台编辑器粘贴即可', 'Copied — paste into the WeChat editor'));
-    } catch {
+    } catch (e) {
+      console.error('md2: export failed', e);
       toast(t('复制失败，请重试', 'Copy failed, try again'), 'err');
     }
   };

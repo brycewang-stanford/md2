@@ -198,7 +198,10 @@ function splitContainer(el: Element, parent: Element, page: Page): Split | null 
       placed++;
     }
   }
-  if (placed === 0 || (thead && placed === 1 && head.lastElementChild?.tagName === 'THEAD')) {
+  // Titles (headings, callout titles, table headers) must not be left alone at the bottom of a card
+  const isTitle = (n: Element) => /^H[1-6]$/.test(n.tagName) || n.tagName === 'THEAD' || n.classList.contains('callout-title');
+  const substantive = Array.from(head.children).filter((c) => !isTitle(c)).length;
+  if (placed === 0 || substantive === 0) {
     parent.removeChild(head);
     kids.forEach((k) => el.appendChild(k)); // restore
     return null;
@@ -465,12 +468,16 @@ export function inlineSvgStyles(svg: SVGSVGElement) {
       if (INHERITED.has(p) && parent && parent.getPropertyValue(p) === v && el !== svg) continue;
       if ((p === 'marker-start' || p === 'marker-end') && v === 'none') continue;
       if (p === 'opacity' && v === '1') continue;
+      if (p === 'dominant-baseline' && v === 'auto') continue;
+      if (p === 'visibility' && v === 'visible') continue;
       parts.push(`${p}:${v}`);
     }
     if (parts.length) el.setAttribute('style', parts.join(';'));
     else el.removeAttribute('style');
   }
   svg.querySelectorAll('style').forEach((s) => s.remove());
+  // Styles are baked in now; classes would only be stripped (or misapplied) by host editors
+  for (const el of all) el.removeAttribute('class');
 }
 
 interface MermaidLike {

@@ -8,3 +8,5 @@ coverage
 .vscode-test/
 apps/vscode/media/app/
 *.vsix
+apps/vscode/media/app
+.vscode-test

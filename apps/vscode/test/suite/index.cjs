@@ -54,6 +54,20 @@ exports.run = async function run() {
       assert.ok(text.includes('一篇 Markdown'));
     });
 
+    await step('copy for WeChat → rich text on the system clipboard', async () => {
+      await vscode.env.clipboard.writeText('');
+      await vscode.window.showTextDocument(doc);
+      await vscode.commands.executeCommand('md2.copyWechat');
+      // the plain-text flavour of the rich clipboard is the Markdown source
+      await until(async () => (await vscode.env.clipboard.readText()).includes('# 一篇 Markdown'), 30000, 'wechat copy');
+      if (process.platform === 'darwin') {
+        const html = require('node:child_process').execSync(`osascript -l JavaScript -e "ObjC.import('AppKit'); $.NSPasteboard.generalPasteboard.stringForType($.NSPasteboardTypeHTML).js"`).toString();
+        assert.ok(html.startsWith('<section data-tool="md2"'), html.slice(0, 80));
+        assert.ok(!/ class="/.test(html), 'no classes in WeChat HTML');
+        assert.ok(html.includes('<svg'), 'math / diagrams inline as SVG');
+      }
+    });
+
     await step('export long image → file in md2-export', async () => {
       await vscode.window.showTextDocument(doc);
       await vscode.commands.executeCommand('md2.exportLong');
@@ -75,7 +89,7 @@ exports.run = async function run() {
 
     await step('live sync: editing the document updates the preview', async () => {
       const editor = await vscode.window.showTextDocument(doc);
-      await editor.edit((e) => e.insert(new vscode.Position(doc.lineCount, 0), '\n\n## Live edit check\n'));
+      await editor.edit((e) => e.insert(new vscode.Position(doc.lineCount, 0), '\n\nLive edit check paragraph.\n'));
       await sleep(800);
       await vscode.commands.executeCommand('md2.copyThread');
       await until(async () => (await vscode.env.clipboard.readText()).includes('Live edit check'), 20000, 'edited text in thread');

@@ -84,7 +84,8 @@ export function App() {
               await sleep(100);
             }
             await sleep(200);
-            await runPrimaryAction();
+            const ran = await runPrimaryAction();
+            console.info(`md2: command ${String(msg.tab)} → ${ran ? 'ran' : 'no action registered'}`);
           })();
         }
       } else if (msg.type === 'theme') {
@@ -182,7 +183,7 @@ export function App() {
 
   return (
     <AiProvider markdown={source}>
-      <div className={`app${isVsCode ? ' is-embedded' : ''}`} data-mobile-view={mobileView} key={lang}>
+      <div className={`app${isVsCode ? ' is-embedded' : ''}`} data-mobile-view={isVsCode ? 'preview' : mobileView} key={lang}>
         <header className="topbar">
           {!isVsCode && (
             <a className="brand" href={REPO} target="_blank" rel="noreferrer">

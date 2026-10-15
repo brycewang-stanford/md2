@@ -95,8 +95,10 @@ function vscodeHost(api: VsCodeApi): Host {
   // Surface webview errors in the extension's "md2" output channel
   const log = (level: string, args: unknown[]) =>
     api.postMessage({ type: 'log', level, text: args.map((a) => (a instanceof Error ? `${a.message}\n${a.stack ?? ''}` : typeof a === 'string' ? a : JSON.stringify(a))).join(' ') });
-  const origError = console.error.bind(console);
-  console.error = (...args: unknown[]) => (log('error', args), origError(...args));
+  for (const level of ['error', 'warn', 'info'] as const) {
+    const orig = console[level].bind(console);
+    console[level] = (...args: unknown[]) => (log(level, args), orig(...args));
+  }
   window.addEventListener('error', (e) => log('error', [e.message, e.filename + ':' + e.lineno]));
   window.addEventListener('unhandledrejection', (e) => log('error', ['unhandled rejection', e.reason]));
   window.addEventListener('message', (e) => {
