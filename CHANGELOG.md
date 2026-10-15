@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.7 — 2026-10-15
+
+### Fixed
+- **公众号 articles can be published again (请勿插入非mp.weixin.qq.com域名的链接).** WeChat refuses to save or publish an article containing any link that isn't an mp.weixin.qq.com link, and some still got through: links inside footnotes, `mailto:` / email links, `#anchor` and relative links, raw HTML `<a>`, and every link when "Links → refs" was off. Footnote links now become numbered references like the rest, and any other link becomes plain text.
+
 ## 0.2.6 — 2026-10-15
 
 ### Fixed
