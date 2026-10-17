@@ -41,6 +41,23 @@ describe('local images', () => {
     expect(html).toContain('src="U1"');
     expect(html).toContain('src="U2"');
   });
+  test('parseMarkdown lists every src the renderer resolves', () => {
+    // VS Code builds its map from parseMarkdown().images, so the two must agree
+    const md = [
+      '![a](images/1-封面.png "title")',
+      '![b](<my pics/a b.png>)',
+      '![c][ref]',
+      '<img src="raw html.png" width="200">',
+      '',
+      '[ref]: refs/图.png',
+    ].join('\n');
+    const seen: string[] = [];
+    renderWechat(md, { resolveImage: (s) => (seen.push(s), undefined) });
+    const listed = parseMarkdown(md).images;
+    expect(listed).toHaveLength(4);
+    expect(new Set(seen)).toEqual(new Set(listed));
+    expect(listed.map((s) => decodeURI(s))).toEqual(['images/1-封面.png', 'my pics/a b.png', 'refs/图.png', 'raw html.png']);
+  });
   test('malformed escapes and unknown or inherited keys miss cleanly', () => {
     expect(lookupImage(map, '100%.png')).toBe('U3');
     expect(lookupImage(map, 'x%E5.png')).toBeUndefined();

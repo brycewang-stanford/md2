@@ -17,7 +17,9 @@ async function until(fn, ms = 20000, label = 'condition') {
 exports.run = async function run() {
   const examples = vscode.workspace.workspaceFolders[0].uri.fsPath;
   const exportDir = path.join(examples, 'md2-export');
+  const imgDir = path.join(examples, 'md2-image-test');
   fs.rmSync(exportDir, { recursive: true, force: true });
+  fs.rmSync(imgDir, { recursive: true, force: true });
   const results = [];
   const step = async (name, fn) => {
     const t = Date.now();
@@ -87,6 +89,19 @@ exports.run = async function run() {
       assert.ok(files.filter((f) => f.endsWith('.png')).length >= 5, files.join(','));
     });
 
+    await step('local images: non-ASCII names, spaces, references and raw HTML map to webview URIs', async () => {
+      const files = ['图 1.png', 'my pics/a b.png', 'refs/图.png', 'raw html.png'];
+      for (const f of files) {
+        fs.mkdirSync(path.dirname(path.join(imgDir, f)), { recursive: true });
+        fs.writeFileSync(path.join(imgDir, f), '');
+      }
+      const md = path.join(imgDir, 'images.md');
+      fs.writeFileSync(md, '![a](<图 1.png>)\n\n![b](<my pics/a b.png>)\n\n![c][ref]\n\n<img src="raw html.png">\n\n[ref]: refs/图.png\n');
+      const map = api.preview().imageMap(await vscode.workspace.openTextDocument(md));
+      assert.deepStrictEqual(Object.keys(map).map((k) => decodeURI(k)).sort(), [...files].sort());
+      for (const uri of Object.values(map)) assert.match(uri, /vscode-(cdn|resource)/);
+    });
+
     await step('live sync: editing the document updates the preview', async () => {
       const editor = await vscode.window.showTextDocument(doc);
       await editor.edit((e) => e.insert(new vscode.Position(doc.lineCount, 0), '\n\nLive edit check paragraph.\n'));
@@ -102,5 +117,6 @@ exports.run = async function run() {
     throw e;
   } finally {
     fs.rmSync(exportDir, { recursive: true, force: true });
+    fs.rmSync(imgDir, { recursive: true, force: true });
   }
 };

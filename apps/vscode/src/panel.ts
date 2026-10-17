@@ -1,11 +1,10 @@
 import * as vscode from 'vscode';
 import * as path from 'node:path';
 import * as fs from 'node:fs';
+import { parseMarkdown } from '@md2/core';
 
 /** Messages the webview sends that expect a `response`. */
 export type RequestHandler = (msg: Record<string, unknown>, panel: PreviewPanel) => Promise<unknown>;
-
-const IMG_RE = /!\[[^\]]*\]\(\s*<?([^)\s>]+)>?(?:\s+"[^"]*")?\s*\)|<img[^>]+src=["']([^"']+)["']/g;
 
 /**
  * The md2 preview: hosts the web app build (media/app) in a webview and keeps
@@ -105,9 +104,9 @@ export class PreviewPanel {
     const map: Record<string, string> = {};
     if (doc.uri.scheme !== 'file') return map;
     const dir = path.dirname(doc.uri.fsPath);
-    const text = doc.getText();
-    for (const m of text.matchAll(IMG_RE)) {
-      const src = m[1] ?? m[2];
+    // The srcs exactly as the webview renderer sees them: covers `<paths with spaces>`,
+    // reference-style images and raw HTML <img>, so lookups hit without guessing.
+    for (const src of new Set(parseMarkdown(doc.getText()).images)) {
       if (!src || /^(https?:|data:|asset:)/i.test(src)) continue;
       let p = src.split(/[?#]/)[0];
       try {
