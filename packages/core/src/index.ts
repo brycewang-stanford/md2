@@ -4,6 +4,7 @@ export { inlineCss, specificity } from './inline-css.js';
 export { texToSvg, preloadMath, isMathReady } from './math.js';
 export { highlightCode, normalizeLang } from './highlight.js';
 export { prepareArticle, type ArticleOptions } from './article.js';
+export { lookupImage } from './transforms.js';
 export { toPlainBlocks, type PlainBlock } from './plain.js';
 export * from './themes/index.js';
 export * from './cover/index.js';

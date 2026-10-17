@@ -2,6 +2,8 @@
  * Local image assets pasted / dropped into the editor. Stored in IndexedDB and
  * referenced from Markdown as `asset:<id>` so the document stays readable.
  */
+import { lookupImage } from '@md2/core';
+
 const DB = 'md2';
 const STORE = 'assets';
 const cache = new Map<string, string>();
@@ -58,5 +60,5 @@ export function setHostImages(map: Record<string, string>) {
 /** `resolveImage` for renderers: `asset:id` → data URL, host-mapped local paths → URLs. */
 export function resolveAsset(src: string): string | undefined {
   if (src.startsWith('asset:')) return cache.get(src.slice(6));
-  return hostImages[src];
+  return lookupImage(hostImages, src);
 }

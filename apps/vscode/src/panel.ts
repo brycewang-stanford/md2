@@ -109,7 +109,12 @@ export class PreviewPanel {
     for (const m of text.matchAll(IMG_RE)) {
       const src = m[1] ?? m[2];
       if (!src || /^(https?:|data:|asset:)/i.test(src)) continue;
-      let p = decodeURI(src.split(/[?#]/)[0]);
+      let p = src.split(/[?#]/)[0];
+      try {
+        p = decodeURI(p);
+      } catch {
+        // a literal `%` in a file name: use the path as written
+      }
       if (p.startsWith('file://')) p = vscode.Uri.parse(p).fsPath;
       const abs = path.isAbsolute(p) ? p : path.resolve(dir, p);
       if (fs.existsSync(abs)) map[src] = this.panel.webview.asWebviewUri(vscode.Uri.file(abs)).toString();

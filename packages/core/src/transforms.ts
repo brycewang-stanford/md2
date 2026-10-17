@@ -221,6 +221,22 @@ export function removeFirstH1(tree: Root) {
   if (i >= 0) tree.children.splice(i, 1);
 }
 
+/**
+ * Look up an image in a map keyed by the src as written in the Markdown.
+ * The renderer percent-encodes the src (`封面.png` → `%E5%B0%81%E9%9D%A2.png`),
+ * so on a miss the decoded form is tried.
+ */
+export function lookupImage(map: Record<string, string>, src: string): string | undefined {
+  if (Object.hasOwn(map, src)) return map[src];
+  let decoded: string;
+  try {
+    decoded = decodeURI(src);
+  } catch {
+    return undefined;
+  }
+  return Object.hasOwn(map, decoded) ? map[decoded] : undefined;
+}
+
 /** Make relative/local image URLs absolute using a resolver. */
 export function rewriteImages(tree: Root, resolve: (src: string) => string | undefined) {
   visit(tree, 'element', (el: Element) => {

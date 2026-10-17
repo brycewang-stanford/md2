@@ -4,7 +4,7 @@ import {
   parseMarkdown, renderWechat, renderZhihu, renderX, renderXhs, renderXhsText, renderCover,
   tweetLength, inlineCss, specificity, themes, codeThemes, coverTemplates, coverSizes,
   preloadMath, renderLongImage, toUnicodeBold, socialPlatforms, aiXhsCopy, aiThread, articleText, AiError,
-  texToSvg, isPublicImage, zhihuImageCandidates,
+  texToSvg, isPublicImage, zhihuImageCandidates, lookupImage,
 } from '../src/index.js';
 import { fromHtml } from 'hast-util-from-html';
 import { toHtml } from 'hast-util-to-html';
@@ -28,6 +28,24 @@ describe('parse', () => {
   });
   test('comma separated tags', () => {
     expect(parseMarkdown('---\ntags: a, b，c\n---\nx').tags).toEqual(['a', 'b', 'c']);
+  });
+});
+
+describe('local images', () => {
+  // VS Code keys its image map by the src as written; the renderer percent-encodes it
+  const map = { 'images/1-封面.png': 'U1', 'images/5-bootstrap.gif': 'U2', '100%.png': 'U3' };
+  test('non-ASCII file names resolve through the host map', () => {
+    const { html } = renderWechat('![a](images/1-封面.png)\n\n![b](images/5-bootstrap.gif)', {
+      resolveImage: (s) => lookupImage(map, s),
+    });
+    expect(html).toContain('src="U1"');
+    expect(html).toContain('src="U2"');
+  });
+  test('malformed escapes and unknown or inherited keys miss cleanly', () => {
+    expect(lookupImage(map, '100%.png')).toBe('U3');
+    expect(lookupImage(map, 'x%E5.png')).toBeUndefined();
+    expect(lookupImage(map, 'missing.png')).toBeUndefined();
+    expect(lookupImage(map, 'constructor')).toBeUndefined();
   });
 });
 
