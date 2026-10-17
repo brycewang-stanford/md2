@@ -1,6 +1,6 @@
 {
   "name": "md2all",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "description": "Markdown \u2192 \u516c\u4f17\u53f7 / \u77e5\u4e4e / \u5c0f\u7ea2\u4e66 / X. CLI + MCP server for md2.",
   "license": "MIT",
   "type": "module",

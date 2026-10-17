@@ -2,7 +2,7 @@
   "name": "md2",
   "displayName": "md2 \u2014 Markdown to WeChat, Zhihu, Xiaohongshu & Threads",
   "description": "Live-preview and export Markdown for \u516c\u4f17\u53f7 (WeChat), \u77e5\u4e4e (Zhihu), \u5c0f\u7ea2\u4e66 (Xiaohongshu) image cards, X / Threads / Bluesky / LinkedIn threads, long images and covers \u2014 16 modern themes, math, Mermaid, AI copywriting.",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "publisher": "brycewang-stanford",
   "license": "MIT",
   "icon": "media/icon.png",

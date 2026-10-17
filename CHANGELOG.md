@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.8 — 2026-10-17
+
+### Fixed
+- **Local images with Chinese (or other non-ASCII) file names show in the VS Code preview.** `![](images/封面.png)` rendered as a broken image while `images/cover.png` worked: the Markdown renderer percent-encodes the path before md2 looks it up, so the lookup missed. All previews (公众号, 知乎, 小红书, long image) now find the file.
+- A local image whose file name contains a literal `%` no longer stops the preview from updating.
+
 ## 0.2.7 — 2026-10-15
 
 ### Fixed
