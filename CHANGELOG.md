@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.9 — 2026-10-17
+
+### Fixed
+- **More local images show in the VS Code preview:** paths with spaces written in angle brackets (`![](<my pics/a.png>)`), reference-style images (`![a][ref]` with `[ref]: images/a.png`) and raw HTML `<img>` tags. md2 now finds images with the same parser that renders the preview, so it sees every image the preview shows.
+
 ## 0.2.8 — 2026-10-17
 
 ### Fixed
