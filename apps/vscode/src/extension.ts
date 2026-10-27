@@ -6,11 +6,13 @@ import { copyHtml } from '../../../packages/cli/src/clipboard';
 import { publishWechatDraft } from '../../../packages/cli/src/publish';
 import { publicImages } from '../../../packages/cli/src/public-images';
 import { wechatImages } from '../../../packages/cli/src/wechat-images';
+import { zhihuImages, ZhihuAuthError } from '../../../packages/cli/src/zhihu-images';
 import { PreviewPanel, type RequestHandler } from './panel';
 
 const SECRET_AI_KEY = 'md2.ai.apiKey';
 const SECRET_WX_ID = 'md2.wechat.appId';
 const SECRET_WX_SECRET = 'md2.wechat.appSecret';
+const SECRET_ZH_COOKIE = 'md2.zhihu.cookie';
 const STATE_AI = 'md2.ai.config';
 
 let ctx: vscode.ExtensionContext;
@@ -119,6 +121,22 @@ const handle: RequestHandler = async (msg, panel) => {
         return { map: {}, failed: [], error: (e as Error).message };
       }
     }
+    case 'zhihuImages': {
+      // With a saved login cookie, upload to Zhihu's own CDN (zhimg.com); `prompt` asks for one when none is saved
+      const doc = panel.document;
+      if (!doc) return null;
+      const cookie = (await ctx.secrets.get(SECRET_ZH_COOKIE)) ?? (msg.prompt ? await zhihuCookieInput() : undefined);
+      if (!cookie) return null;
+      const dir = doc.uri.scheme === 'file' ? path.dirname(doc.uri.fsPath) : (vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '.');
+      try {
+        return await zhihuImages(msg.srcs as string[], dir, cookie);
+      } catch (e) {
+        PreviewPanel.output.appendLine(`zhihuImages: ${(e as Error).message}`);
+        // a rejected cookie is useless: drop it so the next copy asks again
+        if (e instanceof ZhihuAuthError) await ctx.secrets.delete(SECRET_ZH_COOKIE);
+        return { map: {}, failed: [], error: (e as Error).message };
+      }
+    }
     case 'ai':
       return runAi(String(msg.task), String(msg.markdown), (msg.platform as SocialPlatformId) ?? 'x');
     case 'saveAiConfig': {
@@ -180,6 +198,19 @@ async function wechatCredentials(force = false): Promise<{ appId: string; appSec
   return { appId: appId.trim(), appSecret: appSecret.trim() };
 }
 
+async function zhihuCookieInput(): Promise<string | undefined> {
+  const cookie = await vscode.window.showInputBox({
+    title: 'md2: Zhihu login cookie (uploads images to zhimg.com)',
+    prompt: '本地图片没有公开地址，知乎无法抓取。在已登录的 zhihu.com 打开开发者工具 → Application → Cookies，复制 z_c0 的值（或 Network 里任一请求的完整 Cookie）',
+    password: true,
+    ignoreFocusOut: true,
+    placeHolder: 'z_c0 value, or the full Cookie header',
+  });
+  if (!cookie?.trim()) return undefined;
+  await ctx.secrets.store(SECRET_ZH_COOKIE, cookie.trim());
+  return cookie.trim();
+}
+
 async function publishWechat() {
   const panel = await openPreview();
   const doc = panel.document;
@@ -235,8 +266,11 @@ export function activate(context: vscode.ExtensionContext): Md2Api {
   reg('md2.setWechatCredentials', async () => {
     if (await wechatCredentials(true)) void vscode.window.showInformationMessage('md2: WeChat credentials saved to SecretStorage.');
   });
+  reg('md2.setZhihuCookie', async () => {
+    if (await zhihuCookieInput()) void vscode.window.showInformationMessage('md2: Zhihu cookie saved to SecretStorage.');
+  });
   reg('md2.clearSecrets', async () => {
-    await Promise.all([SECRET_AI_KEY, SECRET_WX_ID, SECRET_WX_SECRET].map((k) => ctx.secrets.delete(k)));
+    await Promise.all([SECRET_AI_KEY, SECRET_WX_ID, SECRET_WX_SECRET, SECRET_ZH_COOKIE].map((k) => ctx.secrets.delete(k)));
     await ctx.globalState.update(STATE_AI, undefined);
     void vscode.window.showInformationMessage('md2: stored keys cleared.');
   });

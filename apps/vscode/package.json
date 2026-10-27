@@ -104,8 +104,13 @@
         "category": "md2"
       },
       {
+        "command": "md2.setZhihuCookie",
+        "title": "Set Zhihu Cookie (upload images to \u77e5\u4e4e)",
+        "category": "md2"
+      },
+      {
         "command": "md2.clearSecrets",
-        "title": "Clear Stored Keys (WeChat & AI)",
+        "title": "Clear Stored Keys (WeChat, Zhihu & AI)",
         "category": "md2"
       }
     ],

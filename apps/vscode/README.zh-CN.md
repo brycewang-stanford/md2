@@ -44,6 +44,7 @@
 | `md2: Export Long Image (长图)` | 一张长 PNG |
 | `md2: Export Cover (封面)` | 所选尺寸的 PNG |
 | `md2: Publish to WeChat Drafts` | 需要 AppID / AppSecret，且本机 IP 已加入白名单 |
+| `md2: Set Zhihu Cookie` | 复制时把图片上传到知乎图床（zhimg.com），没有公开地址的本地图片也能粘贴（需要时会自动询问） |
 | `md2: Set WeChat AppID / AppSecret` · `md2: Clear Stored Keys` | 凭据保存在 SecretStorage |
 
 以上命令也都在编辑器右键菜单的 **md2** 子菜单中。在预览面板内，<kbd>⌘</kbd><kbd>⇧</kbd><kbd>C</kbd> 执行当前标签页的主操作。

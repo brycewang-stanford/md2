@@ -5,6 +5,7 @@ import { publicImages } from '../src/public-images.js';
 import { inlineLocalImages, localPath, loadImage } from '../src/io.js';
 import { WechatApiError } from '../src/wechat-api.js';
 import { wechatImages } from '../src/wechat-images.js';
+import { zhihuImages, ZhihuAuthError } from '../src/zhihu-images.js';
 
 const post = fileURLToPath(new URL('./fixtures/post.md', import.meta.url));
 const dir = fileURLToPath(new URL('./fixtures/', import.meta.url));
@@ -35,6 +36,57 @@ describe('zhihu images', () => {
     expect(r.html).toMatch(/<img src="data:image\/png;base64,/);
     expect(r.warnings.map((w) => w.code)).toContain('inlined-image');
     expect(r.warnings.map((w) => w.code)).not.toContain('local-image');
+  });
+});
+
+describe('zhihu uploads', () => {
+  const zhihuApi = (state: number) => {
+    const calls: { url: string; init?: RequestInit }[] = [];
+    vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+      if (url === 'https://api.zhihu.com/images') {
+        const { image_hash } = JSON.parse(String(init?.body));
+        return Response.json({
+          upload_file: { state, image_id: 'img1', object_key: `v2-${image_hash}` },
+          upload_token: { access_id: 'id', access_key: 'key', access_token: 'tok' },
+        });
+      }
+      if (url.startsWith('https://zhihu-pics-upload.zhimg.com/')) return new Response(null, { status: 200 });
+      if (url === 'https://api.zhihu.com/images/img1') return Response.json({ status: 'success', original_src: 'https://picx.zhimg.com/v2-abc.png' });
+      throw new Error(`unexpected fetch ${url}`);
+    });
+    return calls;
+  };
+
+  test('uploads to zhimg.com with the cookie, dedupes, reports what it cannot upload', async () => {
+    const calls = zhihuApi(2);
+    const r = await zhihuImages(['./pic.png', 'pic.png', './missing.png', 'https://pic1.zhimg.com/already.png'], dir, 'z0value');
+    expect(r.map['./pic.png']).toBe('https://picx.zhimg.com/v2-abc.png');
+    expect(r.map['pic.png']).toBe('https://picx.zhimg.com/v2-abc.png');
+    expect(r.failed.map((f) => f.src)).toEqual(['./missing.png']);
+    const ticket = calls.filter((c) => c.url === 'https://api.zhihu.com/images');
+    expect(ticket.length).toBe(1);
+    expect((ticket[0].init?.headers as Record<string, string>).cookie).toBe('z_c0=z0value');
+    const put = calls.find((c) => c.url.startsWith('https://zhihu-pics-upload.zhimg.com/'))!;
+    expect(put.init?.method).toBe('PUT');
+    expect((put.init?.headers as Record<string, string>).authorization).toMatch(/^OSS id:[A-Za-z0-9+/=]+$/);
+  });
+  test('images Zhihu already has skip the OSS upload', async () => {
+    const calls = zhihuApi(1);
+    const r = await zhihuImages(['data:image/png;base64,iVBORw0KGgoAAAANSUhEUg=='], dir, 'z_c0=a; d_c0=b');
+    expect(Object.values(r.map)).toEqual(['https://picx.zhimg.com/v2-abc.png']);
+    expect(calls.some((c) => c.url.startsWith('https://zhihu-pics-upload'))).toBe(false);
+  });
+  test('a rejected cookie throws so the caller can fall back', async () => {
+    vi.stubGlobal('fetch', async () => new Response('{"error":{}}', { status: 401 }));
+    await expect(zhihuImages(['data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA'], dir, 'bad')).rejects.toBeInstanceOf(ZhihuAuthError);
+  });
+  test('zhihuHtml pastes zhimg URLs instead of base64 when a cookie is given', async () => {
+    zhihuApi(2);
+    const r = await zhihuHtml({ file: post }, { noGit: true, zhihuCookie: 'z0' });
+    expect(r.html).toContain('src="https://picx.zhimg.com/v2-abc.png"');
+    expect(r.html).not.toMatch(/src="data:/);
+    expect(r.warnings.map((w) => w.code)).not.toContain('inlined-image');
   });
 });
 

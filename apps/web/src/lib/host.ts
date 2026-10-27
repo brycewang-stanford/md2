@@ -24,6 +24,8 @@ export interface Host {
   publicImages?(srcs: string[], imageBase?: string): Promise<{ map: Record<string, string>; inlined: string[]; unreachable: string[] }>;
   /** Upload images to WeChat's CDN (mmbiz.qpic.cn) with saved API credentials; null when none are saved */
   wechatImages?(srcs: string[]): Promise<{ map: Record<string, string>; failed: { src: string; error: string }[]; error?: string } | null>;
+  /** Upload images to Zhihu's CDN (zhimg.com) with a saved login cookie; `prompt` asks for one first. null when none is saved */
+  zhihuImages?(srcs: string[], prompt?: boolean): Promise<{ map: Record<string, string>; failed: { src: string; error: string }[]; error?: string } | null>;
 }
 
 interface VsCodeApi {
@@ -129,6 +131,7 @@ function vscodeHost(api: VsCodeApi): Host {
     aiConfigured: () => request<boolean>('aiConfigured'),
     publicImages: (srcs, imageBase) => request('publicImages', { srcs, imageBase }),
     wechatImages: (srcs) => request('wechatImages', { srcs }),
+    zhihuImages: (srcs, prompt) => request('zhihuImages', { srcs, prompt }),
   };
 }
 

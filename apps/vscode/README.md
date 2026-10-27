@@ -45,6 +45,7 @@ Click **md2** in the editor title bar (or press <kbd>⌘</kbd><kbd>⌥</kbd><kbd
 | `md2: Export Long Image (长图)` | one tall PNG |
 | `md2: Export Cover (封面)` | PNG in the selected size |
 | `md2: Publish to WeChat Drafts` | needs AppID / AppSecret and a whitelisted IP |
+| `md2: Set Zhihu Cookie` | uploads images to zhimg.com on copy, so local images that aren't on a public host still paste (asked for automatically when needed) |
 | `md2: Set WeChat AppID / AppSecret` · `md2: Clear Stored Keys` | credentials in SecretStorage |
 
 Everything is also in the editor's right-click **md2** menu. Inside the preview, <kbd>⌘</kbd><kbd>⇧</kbd><kbd>C</kbd> runs the current tab's main action.
