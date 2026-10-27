@@ -39,13 +39,12 @@ Click **md2** in the editor title bar (or press <kbd>⌘</kbd><kbd>⌥</kbd><kbd
 | --- | --- |
 | `md2: Open md2 Preview` | live preview beside the editor |
 | `md2: Copy for WeChat (公众号)` | rich text on the clipboard |
-| `md2: Copy for Zhihu (知乎)` | rich text on the clipboard |
+| `md2: Copy for Zhihu (知乎)` | rich text on the clipboard; the Zhihu tab's **Export Word** button saves a `.docx` with the images embedded, for Zhihu's 导入 → 导入文档 |
 | `md2: Export Xiaohongshu Cards (小红书)` | PNGs + `caption.txt` in `md2-export/` |
 | `md2: Copy Thread` | the thread for the selected platform |
 | `md2: Export Long Image (长图)` | one tall PNG |
 | `md2: Export Cover (封面)` | PNG in the selected size |
 | `md2: Publish to WeChat Drafts` | needs AppID / AppSecret and a whitelisted IP |
-| `md2: Set Zhihu Cookie` | uploads images to zhimg.com on copy, so local images that aren't on a public host still paste (asked for automatically when needed) |
 | `md2: Set WeChat AppID / AppSecret` · `md2: Clear Stored Keys` | credentials in SecretStorage |
 
 Everything is also in the editor's right-click **md2** menu. Inside the preview, <kbd>⌘</kbd><kbd>⇧</kbd><kbd>C</kbd> runs the current tab's main action.

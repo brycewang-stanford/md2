@@ -10,6 +10,7 @@ export * from './themes/index.js';
 export * from './cover/index.js';
 export { renderWechat, type WechatOptions, type WechatResult } from './platforms/wechat.js';
 export { renderZhihu, zhihuEquation, zhihuLang, isPublicImage, zhihuImageCandidates, type ZhihuOptions, type ZhihuResult } from './platforms/zhihu.js';
+export { renderZhihuDocx, imageSize, type ZhihuDocxOptions, type ZhihuDocxResult, type DocxImage } from './platforms/zhihu-docx.js';
 export {
   renderXhs, renderXhsText, xhsLength, xhsCardStyles, XHS_TITLE_MAX, XHS_BODY_MAX,
   type XhsOptions, type XhsResult, type XhsLayout, type XhsText, type XhsCardStyle,

@@ -38,13 +38,12 @@
 | --- | --- |
 | `md2: Open md2 Preview` | 在编辑器旁打开实时预览 |
 | `md2: Copy for WeChat (公众号)` | 富文本复制到剪贴板 |
-| `md2: Copy for Zhihu (知乎)` | 富文本复制到剪贴板 |
+| `md2: Copy for Zhihu (知乎)` | 富文本复制到剪贴板；知乎标签页的「导出 Word」保存图片内嵌的 `.docx`，用知乎「导入 → 导入文档」导入 |
 | `md2: Export Xiaohongshu Cards (小红书)` | PNG + `caption.txt`，保存到 `md2-export/` |
 | `md2: Copy Thread` | 复制当前所选平台的 Thread |
 | `md2: Export Long Image (长图)` | 一张长 PNG |
 | `md2: Export Cover (封面)` | 所选尺寸的 PNG |
 | `md2: Publish to WeChat Drafts` | 需要 AppID / AppSecret，且本机 IP 已加入白名单 |
-| `md2: Set Zhihu Cookie` | 复制时把图片上传到知乎图床（zhimg.com），没有公开地址的本地图片也能粘贴（需要时会自动询问） |
 | `md2: Set WeChat AppID / AppSecret` · `md2: Clear Stored Keys` | 凭据保存在 SecretStorage |
 
 以上命令也都在编辑器右键菜单的 **md2** 子菜单中。在预览面板内，<kbd>⌘</kbd><kbd>⇧</kbd><kbd>C</kbd> 执行当前标签页的主操作。

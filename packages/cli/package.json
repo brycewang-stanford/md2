@@ -1,7 +1,7 @@
 {
   "name": "md2all",
   "version": "0.2.10",
-  "description": "Markdown \u2192 \u516c\u4f17\u53f7 / \u77e5\u4e4e / \u5c0f\u7ea2\u4e66 / X. CLI + MCP server for md2.",
+  "description": "Markdown → 公众号 / 知乎 / 小红书 / X. CLI + MCP server for md2.",
   "license": "MIT",
   "type": "module",
   "bin": {
@@ -13,11 +13,11 @@
   "keywords": [
     "markdown",
     "wechat",
-    "\u516c\u4f17\u53f7",
+    "公众号",
     "zhihu",
-    "\u77e5\u4e4e",
+    "知乎",
     "xiaohongshu",
-    "\u5c0f\u7ea2\u4e66",
+    "小红书",
     "twitter",
     "x",
     "mcp",
@@ -34,6 +34,7 @@
   "devDependencies": {
     "@md2/core": "workspace:*",
     "@types/node": "^26.6.5",
+    "jszip": "^3.10.2",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
     "vitest": "^5.0.4"

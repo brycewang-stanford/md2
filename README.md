@@ -76,7 +76,7 @@ Install [md2 from the VS Code Marketplace](https://marketplace.visualstudio.com/
 - Live preview for every platform, scrolling with your editor.
 - From the Command Palette or the right-click menu: copy for WeChat / Zhihu, export Xiaohongshu cards, long images or covers (saved to `md2-export/`), copy a thread.
 - **Publish to WeChat drafts** (your AppID / AppSecret are kept in VS Code's encrypted SecretStorage).
-- **Zhihu images upload themselves:** with your Zhihu login cookie (`md2: Set Zhihu Cookie`, also kept in SecretStorage), copying uploads images to Zhihu's own image host, so local images in an unpushed or private repo paste fine.
+- **Zhihu Word export:** images in an unpushed or private repo have no public URL, so Zhihu can't fetch them from a paste. The Zhihu tab's **Export Word** button (or `md2 zhihu --docx out.docx`) saves a `.docx` with every image embedded; import it with 导入 → 导入文档 on Zhihu's write page.
 
 <p>
   <img src="docs/images/vscode-wechat.jpg" width="380" alt="VS Code WeChat preview">

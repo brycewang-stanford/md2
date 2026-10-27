@@ -4,8 +4,9 @@ import {
   parseMarkdown, renderWechat, renderZhihu, renderX, renderXhs, renderXhsText, renderCover,
   tweetLength, inlineCss, specificity, themes, codeThemes, coverTemplates, coverSizes,
   preloadMath, renderLongImage, toUnicodeBold, socialPlatforms, aiXhsCopy, aiThread, articleText, AiError,
-  texToSvg, isPublicImage, zhihuImageCandidates, lookupImage,
+  texToSvg, isPublicImage, zhihuImageCandidates, lookupImage, renderZhihuDocx, imageSize,
 } from '../src/index.js';
+import JSZip from 'jszip';
 import { fromHtml } from 'hast-util-from-html';
 import { toHtml } from 'hast-util-to-html';
 
@@ -143,6 +144,38 @@ describe('wechat', () => {
     expect(html).toMatch(/<li[^>]*><section><span[^>]*>☑ <\/span> 公众号一键复制<\/section><\/li>/);
     expect(html).not.toMatch(/<(strong|span)[^>]*linear-gradient/);
     expect(html).not.toContain('line-height: 0; margin: 0 1px');
+  });
+});
+
+describe('zhihu word export', () => {
+  // 1200×600 PNG header: wider than the page, so it is scaled to 6 inches
+  const png = new Uint8Array(32);
+  png.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52, 0, 0, 0x04, 0xb0, 0, 0, 0x02, 0x58]);
+  const md = '# Title\n\nIntro with [a link](https://example.com) and $x^2$.\n\n![pic](a.png)\n\n1. one\n2. two\n   - nested\n\n| A | B |\n|---|---|\n| 1 | 2 |\n\n```python\nprint(1)\nprint(2)\n```\n';
+
+  test('image sizes from file headers', () => {
+    expect(imageSize(png)).toEqual({ width: 1200, height: 600 });
+    const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 4, 0, 0, 0xff, 0xc0, 0, 17, 8, 0x01, 0x2c, 0x01, 0x90, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    expect(imageSize(jpeg)).toEqual({ width: 400, height: 300 });
+  });
+
+  test('builds a Word document with embedded images, lists, tables, links and TeX', async () => {
+    const r = await renderZhihuDocx(md, { loadImage: async () => ({ data: png, mime: 'image/png' }) });
+    expect(r.title).toBe('Title');
+    const zip = await JSZip.loadAsync(r.data);
+    expect(zip.file('word/media/image1.png')).toBeTruthy();
+    const xml = await zip.file('word/document.xml')!.async('string');
+    const rels = await zip.file('word/_rels/document.xml.rels')!.async('string');
+    const numbering = await zip.file('word/numbering.xml')!.async('string');
+    expect(xml).not.toContain('>Title<'); // Zhihu has its own title field
+    expect(xml).toContain('<wp:extent cx="5486400" cy="2743200"/>');
+    expect(rels).toContain('Target="https://example.com" TargetMode="External"');
+    expect(xml).toContain('$x^2$');
+    expect(r.warnings.map((w) => w.code)).toContain('docx-math');
+    expect(xml).toContain('<w:ilvl w:val="1"/>');
+    expect(numbering).toContain('w:val="decimal"');
+    expect(xml).toContain('<w:tbl>');
+    expect(xml).toContain('print(1)</w:t><w:br/><w:t xml:space="preserve">print(2)');
   });
 });
 

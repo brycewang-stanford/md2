@@ -24,8 +24,8 @@ export interface Host {
   publicImages?(srcs: string[], imageBase?: string): Promise<{ map: Record<string, string>; inlined: string[]; unreachable: string[] }>;
   /** Upload images to WeChat's CDN (mmbiz.qpic.cn) with saved API credentials; null when none are saved */
   wechatImages?(srcs: string[]): Promise<{ map: Record<string, string>; failed: { src: string; error: string }[]; error?: string } | null>;
-  /** Upload images to Zhihu's CDN (zhimg.com) with a saved login cookie; `prompt` asks for one first. null when none is saved */
-  zhihuImages?(srcs: string[], prompt?: boolean): Promise<{ map: Record<string, string>; failed: { src: string; error: string }[]; error?: string } | null>;
+  /** Bytes of an image as written in the Markdown (VS Code: read by the extension host, so local files work) */
+  loadImage?(src: string): Promise<{ base64: string; mime: string }>;
 }
 
 interface VsCodeApi {
@@ -131,7 +131,7 @@ function vscodeHost(api: VsCodeApi): Host {
     aiConfigured: () => request<boolean>('aiConfigured'),
     publicImages: (srcs, imageBase) => request('publicImages', { srcs, imageBase }),
     wechatImages: (srcs) => request('wechatImages', { srcs }),
-    zhihuImages: (srcs, prompt) => request('zhihuImages', { srcs, prompt }),
+    loadImage: (src) => request('loadImage', { src }),
   };
 }
 

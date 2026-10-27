@@ -8,7 +8,7 @@ import {
   type XhsCardStyle, type SocialPlatformId, type StyleOptions,
 } from '@md2/core';
 import {
-  wechatHtml, zhihuHtml, xThread, xhsExport, coverExport, publishWechat, longExport, aiSuggest, aiConfigFromEnv, type AiTask,
+  wechatHtml, zhihuHtml, zhihuDocx, xThread, xhsExport, coverExport, publishWechat, longExport, aiSuggest, aiConfigFromEnv, type AiTask,
 } from './actions.js';
 import { copyHtml, copyText } from './clipboard.js';
 import { closeBrowser } from './browser.js';
@@ -103,10 +103,17 @@ program
   .option('--keep-title', 'keep the first H1')
   .option('--links-as-refs', 'turn external links into Zhihu references')
   .option('--image-base <url>', 'public URL prefix for local images (Zhihu fetches every image from its servers)')
-  .option('--zhihu-cookie <cookie>', 'Zhihu login cookie (or z_c0 value): upload images to zhimg.com first (default: $MD2_ZHIHU_COOKIE)')
   .option('--no-git', 'do not map pushed images to jsDelivr; inline local images as base64')
+  .option('--docx <file>', 'write a Word file with the images embedded, for Zhihu 导入 → 导入文档 (no public image URLs needed)')
   .action(async (file, o) => {
-    const r = await zhihuHtml({ file }, { removeTitle: !o.keepTitle, linksAsReferences: o.linksAsRefs, imageBase: o.imageBase, zhihuCookie: o.zhihuCookie, noGit: o.git === false });
+    if (o.docx) {
+      const d = await zhihuDocx({ file }, { removeTitle: !o.keepTitle, linksAsReferences: o.linksAsRefs });
+      warn(d.warnings);
+      writeFileSync(o.docx, d.data);
+      console.error(c.green(`✓ ${o.docx} — on zhuanlan.zhihu.com/write use 导入 → 导入文档`));
+      return;
+    }
+    const r = await zhihuHtml({ file }, { removeTitle: !o.keepTitle, linksAsReferences: o.linksAsRefs, imageBase: o.imageBase, noGit: o.git === false });
     warn(r.warnings);
     if (o.copy) {
       copyHtml(r.html, r.text);

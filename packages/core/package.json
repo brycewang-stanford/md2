@@ -1,7 +1,7 @@
 {
   "name": "@md2/core",
   "version": "0.2.10",
-  "description": "Isomorphic Markdown renderer for WeChat (\u516c\u4f17\u53f7), Zhihu (\u77e5\u4e4e), Xiaohongshu (\u5c0f\u7ea2\u4e66) and X/Twitter",
+  "description": "Isomorphic Markdown renderer for WeChat (公众号), Zhihu (知乎), Xiaohongshu (小红书) and X/Twitter",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -33,6 +33,7 @@
     "hast-util-to-html": "^9.0.5",
     "hast-util-to-text": "^4.0.2",
     "hastscript": "^9.0.1",
+    "jszip": "^3.10.2",
     "lowlight": "^3.3.0",
     "mathjax-full": "^3.2.2",
     "postcss": "^8.5.30",

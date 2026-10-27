@@ -2,15 +2,14 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
-  parseMarkdown, renderWechat, renderZhihu, renderXhs, renderX, renderCover, renderLongImage, ensureEngines, getTheme,
+  parseMarkdown, renderWechat, renderZhihu, renderZhihuDocx, renderXhs, renderX, renderCover, renderLongImage, ensureEngines, getTheme,
   aiXhsCopy, aiThread, aiWechatMeta, aiCoverCopy,
   type CoverOptions, type CoverSizeId, type CoverTemplateId, type WechatOptions, type XhsOptions, type XOptions,
-  type ZhihuOptions, type ParsedDoc, type DiagramResolver, type LongImageOptions, type AiConfig, type SocialPlatformId, type RenderWarning,
+  type ZhihuOptions, type ParsedDoc, type DiagramResolver, type LongImageOptions, type AiConfig, type SocialPlatformId,
 } from '@md2/core';
-import { readInput, inlineLocalImages, isRemote, type Input } from './io.js';
+import { readInput, inlineLocalImages, isRemote, loadImage, type Input } from './io.js';
 import { publishWechatDraft, type PublishCoreOptions } from './publish.js';
 import { publicImages, type PublicImageOptions } from './public-images.js';
-import { zhihuImages } from './zhihu-images.js';
 import { renderXhsPngs, renderCoverPng, renderDiagrams, renderHtmlPng } from './browser.js';
 
 export interface Source {
@@ -56,43 +55,26 @@ export async function wechatHtml(src: Source, opts: WechatOptions & PublicImageO
   return r;
 }
 
-export interface ZhihuImageOptions extends PublicImageOptions {
-  /** Zhihu login cookie (or z_c0 value): upload images to zhimg.com instead of relying on Zhihu's fetcher. Default: MD2_ZHIHU_COOKIE */
-  zhihuCookie?: string;
-}
-
-/**
- * Zhihu fetches pasted images from its servers: with a login cookie they are
- * uploaded to zhimg.com first, anything left is mapped to public URLs.
- */
-export async function zhihuHtml(src: Source, opts: ZhihuOptions & ZhihuImageOptions = {}) {
+/** Zhihu fetches pasted images from its servers, so local images are mapped to public URLs first. */
+export async function zhihuHtml(src: Source, opts: ZhihuOptions & PublicImageOptions = {}) {
   const { doc, baseDir } = await load(src);
   const imageBase = opts.imageBase ?? (doc.frontmatter.image_base as string | undefined);
-  const cookie = opts.zhihuCookie ?? process.env.MD2_ZHIHU_COOKIE;
-  const uploaded: Record<string, string> = {};
-  const warnings: RenderWarning[] = [];
-  if (cookie) {
-    try {
-      const z = await zhihuImages(doc.images.filter((s) => !s.startsWith('asset:')), baseDir, cookie);
-      Object.assign(uploaded, z.map);
-      if (z.failed.length) warnings.push({ code: 'upload-failed', message: `这些图片没能上传到知乎，改用外链: ${z.failed.map((f) => `${f.src}（${f.error}）`).join(', ')}` });
-    } catch (e) {
-      warnings.push({ code: 'upload-failed', message: `图片上传知乎失败，改用外链: ${(e as Error).message}` });
-    }
-  }
-  const rest = doc.images.filter((s) => !uploaded[s]);
-  const { map, inlined, unreachable } = await publicImages(rest, baseDir, { imageBase, noGit: opts.noGit });
-  Object.assign(map, uploaded);
+  const { map, inlined, unreachable } = await publicImages(doc.images, baseDir, { imageBase, noGit: opts.noGit });
   const r = renderZhihu(doc, { ...opts, resolveImage: opts.resolveImage ?? ((s) => map[s]) });
-  r.warnings.push(...warnings);
   if (inlined.length)
     r.warnings.push({
       code: 'inlined-image',
-      message: `${inlined.length} 张本地图片没有公开地址，只能内嵌为 base64，知乎不接受（会显示上传失败）；请设置 MD2_ZHIHU_COOKIE / --zhihu-cookie 自动上传，或先 git push（公开仓库）、设置 image_base: ${inlined.join(', ')}`,
+      message: `${inlined.length} 张本地图片没有公开地址，只能内嵌为 base64，知乎不接受（会显示导入失败）；请改用 --docx 导出 Word，在知乎「导入 → 导入文档」导入，或推送到公开仓库 / 设置 image_base: ${inlined.join(', ')}`,
     });
   if (unreachable.length)
     r.warnings.push({ code: 'unreachable-image', message: `知乎可能无法抓取这些远程图片（备用地址均不可用）: ${unreachable.join(', ')}` });
   return r;
+}
+
+/** Word file for Zhihu's 导入 → 导入文档: images are embedded, so none of them needs a public URL. */
+export async function zhihuDocx(src: Source, opts: ZhihuOptions = {}) {
+  const { doc, baseDir } = await load(src);
+  return renderZhihuDocx(doc, { ...opts, loadImage: (s) => loadImage(s, baseDir) });
 }
 
 export async function xThread(src: Source, opts: XOptions = {}) {
