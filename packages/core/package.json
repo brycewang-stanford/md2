@@ -1,6 +1,6 @@
 {
   "name": "@md2/core",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "description": "Isomorphic Markdown renderer for WeChat (\u516c\u4f17\u53f7), Zhihu (\u77e5\u4e4e), Xiaohongshu (\u5c0f\u7ea2\u4e66) and X/Twitter",
   "license": "MIT",
   "type": "module",

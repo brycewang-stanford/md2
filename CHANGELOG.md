@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.10 — 2026-10-27
+
+### Fixed
+- **知乎 images no longer fail (图片导入失败) when they aren't on a public host.** Zhihu downloads every pasted image from its own servers, so local images in an untracked folder or a **private** repo could only be pasted as base64, which Zhihu rejects. With your Zhihu login cookie saved, "Copy for Zhihu" now uploads each image to Zhihu's own image host (zhimg.com), the way the editor's 图片 button does, and pastes those URLs. VS Code asks for the cookie the first time a copy would otherwise fall back to base64; you can also run `md2: Set Zhihu Cookie`. The cookie is kept in SecretStorage and dropped if Zhihu rejects it. Without a cookie, or if an upload fails, images map to public URLs as before.
+- `md2 zhihu` takes `--zhihu-cookie` (or `MD2_ZHIHU_COOKIE`) to do the same.
+
 ## 0.2.9 — 2026-10-17
 
 ### Fixed
