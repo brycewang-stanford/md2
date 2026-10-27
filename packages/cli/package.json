@@ -1,6 +1,6 @@
 {
   "name": "md2all",
-  "version": "0.2.10",
+  "version": "0.2.11",
   "description": "Markdown → 公众号 / 知乎 / 小红书 / X. CLI + MCP server for md2.",
   "license": "MIT",
   "type": "module",

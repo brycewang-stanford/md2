@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.11 — 2026-10-27
+
+### Fixed
+- **知乎 articles with local images import with their images (图片导入失败).** Zhihu fetches every pasted image from its own servers, so images in an untracked folder or a private repo can't survive a paste. The Zhihu tab now has an **Export Word** button: it saves a `.docx` with every image embedded, plus headings, lists, code, tables and links, which you import with 导入 → 导入文档 on Zhihu's write page. Zhihu uploads the embedded images itself, so they need no public URL. When a copy would paste images Zhihu can't fetch, the warning now points to this button. On the CLI: `md2 zhihu --docx out.docx`.
+- Exported files whose title contains `/` (e.g. "Stata/Python") are saved under that name instead of in a sub-folder.
+
+### Removed
+- The 0.2.10 Zhihu cookie upload (`md2: Set Zhihu Cookie`, `--zhihu-cookie`). It didn't work in real use. Any cookie it saved is deleted when md2 starts.
+
 ## 0.2.10 — 2026-10-27
 
 ### Fixed
